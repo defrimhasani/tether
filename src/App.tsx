@@ -9,6 +9,7 @@ import {
 } from "./refs";
 import { cancel, send } from "./http";
 import { BodyView, HeadersView } from "./ResponseBody";
+import { BodyEditor } from "./BodyEditor";
 import { maskHeader } from "./markup";
 import {
   ArrowUp, Command, Ellipsis, Folder, FolderPlus, Layers, Plus, Search, SlidersHorizontal, Square, SquarePen, X,
@@ -545,7 +546,10 @@ function RequestEditor({ req, edit, ws, onCursor }: { req: RequestDef; edit: (p:
       ) : (
         <div className="body-edit">
           {bodyDisabled && <p className="note">{req.method} requests are sent without a body.</p>}
-          <TemplateInput ws={ws} multiline value={req.body} onChange={(body) => edit({ body })} onCursor={(pos) => onCursor({ field: "body", pos })} placeholder='{ "key": "value" }' />
+          <BodyEditor
+            ws={ws} value={req.body} onChange={(body) => edit({ body })} onCursor={(pos) => onCursor({ field: "body", pos })}
+            jsonHint={req.headers.some((h) => h.enabled && h.key.toLowerCase() === "content-type" && /json/i.test(h.value))}
+          />
         </div>
       )}
     </div>
