@@ -699,6 +699,7 @@ function ResponseView(props: {
           key={entry.id}
           lead={lead}
           res={res}
+          storeKey={entry.requestId}
           selectedPath={selected?.token.replace(`@${sourceSlug}.body.`, "")}
           onSelect={(path, value) => pick(`@${sourceSlug}.body.${path.join(".")}`, value)}
         />

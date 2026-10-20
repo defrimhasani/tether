@@ -3,12 +3,28 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { highlight, JsonTree } from "./JsonTree";
 import { contentType, detectKind, formatMarkup, tokenizeMarkup, type BodyKind, type Tok } from "./markup";
 import { isBinaryResponse } from "./body";
+import { findArrays } from "./table";
+import { TableView, type TableSettings } from "./TableView";
 import { formatBytes, type HttpResponse } from "./model";
 
 const MAX_LINES = 5000;
 const MAX_CHARS = 500_000;
 
-type Mode = "pretty" | "raw" | "preview";
+type Mode = "pretty" | "table" | "raw" | "preview";
+type ViewSettings = { mode?: Mode; table?: TableSettings };
+
+/** View choices (mode, table columns, sort) are remembered per request. */
+function useViewSettings(key?: string) {
+  const storageKey = key ? `tether.view.${key}` : null;
+  const [settings, setSettings] = useState<ViewSettings>(() => {
+    try { return storageKey ? JSON.parse(localStorage.getItem(storageKey) ?? "{}") : {}; } catch { return {}; }
+  });
+  const update = (next: ViewSettings) => {
+    setSettings(next);
+    if (storageKey) localStorage.setItem(storageKey, JSON.stringify(next));
+  };
+  return [settings, update] as const;
+}
 
 function useFindShortcut(ref: React.RefObject<HTMLInputElement | null>) {
   useEffect(() => {
@@ -75,13 +91,17 @@ function Lines({ text, query, wrap, markup }: { text: string; query: string; wra
   );
 }
 
-export function BodyView({ res, selectedPath, onSelect, lead }: { res: HttpResponse; selectedPath?: string; onSelect: (path: string[], value: string) => void; lead: React.ReactNode }) {
+export function BodyView({ res, selectedPath, onSelect, lead, storeKey }: { res: HttpResponse; selectedPath?: string; onSelect: (path: string[], value: string) => void; lead: React.ReactNode; storeKey?: string }) {
   const kind: BodyKind = useMemo(() => (isBinaryResponse(res) ? "binary" : detectKind(res.headers, res.body)), [res]);
   const parsed = useMemo(() => {
     if (kind !== "json") return undefined;
     try { return JSON.parse(res.body) as unknown; } catch { return undefined; }
   }, [kind, res.body]);
-  const [mode, setMode] = useState<Mode>("pretty");
+  const arrays = useMemo(() => (parsed !== undefined ? findArrays(parsed) : []), [parsed]);
+  const [view, setView] = useViewSettings(storeKey);
+  const available: Mode[] = ["pretty", ...(arrays.length ? ["table" as Mode] : []), "raw", ...(kind === "html" ? ["preview" as Mode] : [])];
+  const mode: Mode = view.mode && available.includes(view.mode) ? view.mode : "pretty";
+  const setMode = (m: Mode) => setView({ ...view, mode: m });
   const [query, setQuery] = useState("");
   const [wrap, setWrap] = useState(true);
   const [fold, setFold] = useState(0);
@@ -108,7 +128,8 @@ export function BodyView({ res, selectedPath, onSelect, lead }: { res: HttpRespo
     );
   }
 
-  const modes: [Mode, string][] = [["pretty", "Pretty"], ["raw", "Raw"], ...(kind === "html" ? [["preview", "Preview"] as [Mode, string]] : [])];
+  const labels: Record<Mode, string> = { pretty: "Pretty", table: "Table", raw: "Raw", preview: "Preview" };
+  const modes: [Mode, string][] = available.map((m) => [m, labels[m]]);
   const label = { json: "JSON", html: "HTML", xml: "XML", text: "Text" }[kind];
 
   return (
@@ -121,7 +142,7 @@ export function BodyView({ res, selectedPath, onSelect, lead }: { res: HttpRespo
         </div>
         <span className="kind">{label}</span>
         <span className="spacer" />
-        {mode !== "preview" && <Find value={query} onChange={setQuery} count={hits} inputRef={findRef} />}
+        {mode !== "preview" && <Find value={query} onChange={setQuery} count={mode === "table" ? undefined : hits} inputRef={findRef} />}
         {mode === "pretty" && parsed !== undefined && (
           <>
             <button className="icon" title="Expand all" aria-label="Expand all" onClick={() => setFold((f) => Math.abs(f) + 1)}><ChevronsUpDown size={14} /></button>
@@ -135,17 +156,20 @@ export function BodyView({ res, selectedPath, onSelect, lead }: { res: HttpRespo
           <Copy size={13} />
         </button>
       </div>
-      <div className="payload">
+      <div className={`payload ${mode === "table" ? "is-table" : ""}`}>
         {mode === "preview" ? (
           <iframe className="preview" title="HTML preview" sandbox="" srcDoc={body} />
+        ) : mode === "table" && parsed !== undefined ? (
+          <TableView root={parsed} arrays={arrays} settings={view.table ?? {}} onSettings={(t) => setView({ ...view, table: t })}
+            onSelect={onSelect} selectedPath={selectedPath} query={query} />
         ) : mode === "pretty" && parsed !== undefined ? (
           <JsonTree value={parsed} selected={selectedPath} onSelect={onSelect} query={query} fold={fold} />
         ) : (
           <Lines text={shownText} query={query} wrap={wrap} markup={mode === "pretty" && (kind === "html" || kind === "xml")} />
         )}
-        {(res.truncated || res.body.length > MAX_CHARS) && (
+        {(res.truncated || (res.body.length > MAX_CHARS && (mode === "raw" || parsed === undefined))) && (
           <p className="muted pad truncated-note">
-            Showing the first {formatBytes(Math.min(res.body.length, MAX_CHARS))} of {formatBytes(res.size)}.
+            Showing the first {res.truncated ? formatBytes(res.body.length) : `${MAX_CHARS.toLocaleString()} characters`} of {formatBytes(res.size)}.
             {res.bodyFile ? <> The full body is saved at <code>{res.bodyFile}</code>.</> : res.truncated ? " The rest isn’t kept in history." : null}
           </p>
         )}
