@@ -1,3 +1,5 @@
+mod bridge;
+mod mcp;
 mod secrets;
 mod workspace;
 
@@ -197,12 +199,18 @@ fn cancel_request(id: String, state: tauri::State<'_, InFlight>) {
   }
 }
 
+/// Runs the stdio MCP bridge (`tether --mcp`) instead of the app.
+pub fn run_mcp_bridge() {
+  bridge::run();
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_dialog::init())
     .manage(InFlight::default())
+    .manage(mcp::McpState::default())
     .invoke_handler(tauri::generate_handler![
       send_request,
       cancel_request,
@@ -210,7 +218,12 @@ pub fn run() {
       secrets::save_secrets,
       secrets::delete_secrets,
       workspace::read_workspace,
-      workspace::write_workspace
+      workspace::write_workspace,
+      mcp::mcp_start,
+      mcp::mcp_stop,
+      mcp::mcp_status,
+      mcp::mcp_respond,
+      mcp::agent_autostart
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -222,8 +235,14 @@ pub fn run() {
       }
       Ok(())
     })
-    .run(tauri::generate_context!())
-    .expect("error while building tauri application");
+    .build(tauri::generate_context!())
+    .expect("error while building tauri application")
+    .run(|app, event| {
+      if let tauri::RunEvent::Exit = event {
+        use tauri::Manager;
+        mcp::shutdown(&app.state::<mcp::McpState>());
+      }
+    });
 }
 
 #[cfg(test)]
