@@ -42,6 +42,7 @@ export function toFiles(ws: Workspace): Files {
       files[`collections/${dir}/${file}`] = json({
         id: r.id,
         name: r.name,
+        ...(r.description ? { description: r.description } : {}),
         method: r.method,
         url: r.url,
         headers: kvOut(r.headers),
@@ -119,6 +120,7 @@ export function fromFiles(files: Files): LoadResult {
       requests.push({
         id: freshId(r.id, path),
         name: str(r.name, file.replace(/\.json$/, "")),
+        ...(str(r.description) ? { description: str(r.description) } : {}),
         method: (METHODS as readonly string[]).includes(method) ? (method as Method) : "GET",
         url: str(r.url),
         headers: kvIn(r.headers),
