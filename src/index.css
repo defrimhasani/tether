@@ -275,3 +275,5 @@ code.val { background: var(--surface); border: 1px solid var(--line); display: i
 .dialog p { margin: 0 0 6px; color: var(--ink-2); }
 .dialog .modal-foot { gap: 8px; justify-content: flex-end; }
 .dialog .modal-foot .primary { margin-left: 0; }
+
+.banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 14px; background: var(--bad-soft); color: var(--bad); border-bottom: 1px solid var(--line); font-size: 12px; }
