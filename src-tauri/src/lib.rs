@@ -26,8 +26,8 @@ struct SendResponse {
   duration_ms: u128,
 }
 
-#[derive(Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase")]
+#[derive(Debug, Serialize)]
+#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
 enum SendError {
   Cancelled,
   Timeout { after_ms: u64 },
@@ -43,10 +43,7 @@ async fn send_request(
   req: SendRequest,
   state: tauri::State<'_, InFlight>,
 ) -> Result<SendResponse, SendError> {
-  let method = reqwest::Method::from_bytes(req.method.to_uppercase().as_bytes())
-    .map_err(|_| SendError::Invalid { message: format!("Unknown method “{}”", req.method) })?;
-  let url = reqwest::Url::parse(&req.url)
-    .map_err(|e| SendError::Invalid { message: format!("Invalid URL: {e}") })?;
+  let (method, url) = parse_target(&req.method, &req.url)?;
   let timeout_ms = req.timeout_ms.unwrap_or(30_000);
 
   let client = reqwest::Client::builder()
@@ -97,6 +94,16 @@ async fn send_request(
   result
 }
 
+fn parse_target(method: &str, url: &str) -> Result<(reqwest::Method, reqwest::Url), SendError> {
+  let method = reqwest::Method::from_bytes(method.to_uppercase().as_bytes())
+    .map_err(|_| SendError::Invalid { message: format!("Unknown method “{method}”") })?;
+  let url = reqwest::Url::parse(url).map_err(|e| SendError::Invalid { message: format!("Invalid URL: {e}") })?;
+  if !matches!(url.scheme(), "http" | "https") {
+    return Err(SendError::Invalid { message: format!("Unsupported scheme “{}”; use http or https", url.scheme()) });
+  }
+  Ok((method, url))
+}
+
 fn root_cause(e: &dyn std::error::Error) -> String {
   let mut cur = e;
   while let Some(next) = cur.source() {
@@ -129,4 +136,43 @@ pub fn run() {
     })
     .run(tauri::generate_context!())
     .expect("error while building tauri application");
+}
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+
+  #[test]
+  fn parses_valid_targets() {
+    let (m, u) = parse_target("post", "https://example.com/a?b=1").unwrap();
+    assert_eq!(m, reqwest::Method::POST);
+    assert_eq!(u.path(), "/a");
+  }
+
+  #[test]
+  fn rejects_invalid_targets() {
+    assert!(matches!(parse_target("GET", "not a url"), Err(SendError::Invalid { .. })));
+    assert!(matches!(parse_target("GET", "file:///etc/hosts"), Err(SendError::Invalid { .. })));
+    assert!(matches!(parse_target("BAD METHOD", "https://x.dev"), Err(SendError::Invalid { .. })));
+  }
+
+  #[test]
+  fn root_cause_returns_innermost_error() {
+    #[derive(Debug)]
+    struct Outer(std::io::Error);
+    impl std::fmt::Display for Outer {
+      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "outer") }
+    }
+    impl std::error::Error for Outer {
+      fn source(&self) -> Option<&(dyn std::error::Error + 'static)> { Some(&self.0) }
+    }
+    let e = Outer(std::io::Error::other("connection refused"));
+    assert_eq!(root_cause(&e), "connection refused");
+  }
+
+  #[test]
+  fn errors_serialize_with_kind_tag() {
+    let json = serde_json::to_string(&SendError::Timeout { after_ms: 5 }).unwrap();
+    assert_eq!(json, r#"{"kind":"timeout","afterMs":5}"#);
+  }
 }
