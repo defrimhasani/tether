@@ -1,5 +1,6 @@
 import { Check, ChevronRight, Copy } from "lucide-react";
 import { createContext, memo, useContext, useEffect, useMemo, useState } from "react";
+import { DecodeBadge } from "./DecodeBadge";
 
 type Ctx = {
   selected?: string;
@@ -9,6 +10,7 @@ type Ctx = {
   query: string;
   /** Bumped to expand (positive) or collapse (negative) every node. */
   fold: number;
+  onNewRequest?: (url: string) => void;
 };
 const TreeCtx = createContext<Ctx>({ onSelect: () => {}, query: "", fold: 0 });
 
@@ -47,11 +49,11 @@ export function matchingPaths(value: unknown, query: string): Set<string> {
   return hits;
 }
 
-export function JsonTree({ value, selected, onSelect, query = "", fold = 0 }: { value: unknown; selected?: string; onSelect: Ctx["onSelect"]; query?: string; fold?: number }) {
+export function JsonTree({ value, selected, onSelect, query = "", fold = 0, onNewRequest }: { value: unknown; selected?: string; onSelect: Ctx["onSelect"]; query?: string; fold?: number; onNewRequest?: (url: string) => void }) {
   const visible = useMemo(() => (query ? matchingPaths(value, query) : undefined), [value, query]);
   if (visible && !visible.has("")) return <p className="muted pad">No fields match “{query}”.</p>;
   return (
-    <TreeCtx.Provider value={{ selected, onSelect, visible, query, fold }}>
+    <TreeCtx.Provider value={{ selected, onSelect, visible, query, fold, onNewRequest }}>
       <div className="json" role="tree">
         <Node k={null} value={value} path={[]} depth={0} last />
       </div>
@@ -96,7 +98,7 @@ function StringValue({ s }: { s: string }) {
 }
 
 const Node = memo(function Node({ k, value, path, depth, last, inArray }: { k: string | null; value: unknown; path: string[]; depth: number; last: boolean; inArray?: boolean }) {
-  const { selected, onSelect, visible, query, fold } = useContext(TreeCtx);
+  const { selected, onSelect, visible, query, fold, onNewRequest } = useContext(TreeCtx);
   const [open, setOpen] = useState(depth < 2);
   useEffect(() => { if (fold) setOpen(fold > 0); }, [fold]);
   const pathStr = path.join(".");
@@ -127,7 +129,7 @@ const Node = memo(function Node({ k, value, path, depth, last, inArray }: { k: s
   if (!isObj) {
     const v = typeof value === "string" ? <StringValue s={value} />
       : <span className={value === null ? "j-null" : `j-${typeof value}`}>{highlight(String(value), query)}</span>;
-    return line(<>{key}{v}{comma}</>);
+    return line(<>{key}{v}{comma}<DecodeBadge value={value} field={k ?? ""} onNewRequest={onNewRequest} /></>);
   }
 
   const arr = Array.isArray(value);

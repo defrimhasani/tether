@@ -200,6 +200,7 @@ fn cancel_request(id: String, state: tauri::State<'_, InFlight>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_opener::init())
     .plugin(tauri_plugin_dialog::init())
     .manage(InFlight::default())
     .invoke_handler(tauri::generate_handler![

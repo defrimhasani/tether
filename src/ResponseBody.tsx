@@ -4,6 +4,7 @@ import { highlight, JsonTree } from "./JsonTree";
 import { contentType, detectKind, formatMarkup, tokenizeMarkup, type BodyKind, type Tok } from "./markup";
 import { isBinaryResponse } from "./body";
 import { findArrays } from "./table";
+import { DecodeBadge } from "./DecodeBadge";
 import { TableView, type TableSettings } from "./TableView";
 import { formatBytes, type HttpResponse } from "./model";
 
@@ -91,7 +92,7 @@ function Lines({ text, query, wrap, markup }: { text: string; query: string; wra
   );
 }
 
-export function BodyView({ res, selectedPath, onSelect, lead, storeKey }: { res: HttpResponse; selectedPath?: string; onSelect: (path: string[], value: string) => void; lead: React.ReactNode; storeKey?: string }) {
+export function BodyView({ res, selectedPath, onSelect, lead, storeKey, onNewRequest }: { res: HttpResponse; selectedPath?: string; onSelect: (path: string[], value: string) => void; lead: React.ReactNode; storeKey?: string; onNewRequest?: (url: string) => void }) {
   const kind: BodyKind = useMemo(() => (isBinaryResponse(res) ? "binary" : detectKind(res.headers, res.body)), [res]);
   const parsed = useMemo(() => {
     if (kind !== "json") return undefined;
@@ -163,7 +164,7 @@ export function BodyView({ res, selectedPath, onSelect, lead, storeKey }: { res:
           <TableView root={parsed} arrays={arrays} settings={view.table ?? {}} onSettings={(t) => setView({ ...view, table: t })}
             onSelect={onSelect} selectedPath={selectedPath} query={query} />
         ) : mode === "pretty" && parsed !== undefined ? (
-          <JsonTree value={parsed} selected={selectedPath} onSelect={onSelect} query={query} fold={fold} />
+          <JsonTree value={parsed} selected={selectedPath} onSelect={onSelect} query={query} fold={fold} onNewRequest={onNewRequest} />
         ) : (
           <Lines text={shownText} query={query} wrap={wrap} markup={mode === "pretty" && (kind === "html" || kind === "xml")} />
         )}
@@ -178,15 +179,18 @@ export function BodyView({ res, selectedPath, onSelect, lead, storeKey }: { res:
   );
 }
 
-function HeaderValue({ name, value, query }: { name: string; value: string; query: string }) {
+function HeaderValue({ name, value, query, decode, onNewRequest }: { name: string; value: string; query: string; decode?: boolean; onNewRequest?: (url: string) => void }) {
   if (name.toLowerCase() === "set-cookie") {
     const [pair, ...attrs] = value.split(/;\s*/);
     return <>{highlight(pair, query)}{attrs.map((a, i) => <span key={i} className="cookie-attr">; {highlight(a, query)}</span>)}</>;
   }
-  return <>{highlight(value, query)}</>;
+  // Decode the token part of "Bearer <token>" and plain values; dates use HTTP format, so try those too.
+  const token = value.replace(/^(bearer|token)\s+/i, "");
+  const httpDate = /^[A-Z][a-z]{2}, \d{2} [A-Z][a-z]{2} \d{4} \d{2}:\d{2}:\d{2} GMT$/.test(value) ? new Date(value).toISOString() : null;
+  return <>{highlight(value, query)}{decode && <DecodeBadge value={httpDate ?? token} field={name.toLowerCase().replace(/-/g, "_")} onNewRequest={onNewRequest} />}</>;
 }
 
-function HeaderTable({ rows, query, selectedName, onPick, empty }: { rows: [string, string][]; query: string; selectedName?: string; onPick?: (name: string, value: string) => void; empty: string }) {
+function HeaderTable({ rows, query, selectedName, onPick, empty, decode, onNewRequest }: { rows: [string, string][]; query: string; selectedName?: string; onPick?: (name: string, value: string) => void; empty: string; decode?: boolean; onNewRequest?: (url: string) => void }) {
   const q = query.toLowerCase();
   const shown = rows.filter(([k, v]) => !q || k.toLowerCase().includes(q) || v.toLowerCase().includes(q));
   if (!shown.length) return <p className="muted pad">{rows.length ? `No headers match “${query}”.` : empty}</p>;
@@ -196,7 +200,7 @@ function HeaderTable({ rows, query, selectedName, onPick, empty }: { rows: [stri
         {shown.map(([k, v], i) => (
           <tr key={i} className={`${onPick ? "pickable" : ""} ${selectedName === k ? "sel" : ""}`} onClick={() => onPick?.(k, v)}>
             <th scope="row">{highlight(k, query)}</th>
-            <td><HeaderValue name={k} value={v} query={query} /></td>
+            <td><HeaderValue name={k} value={v} query={query} decode={decode} onNewRequest={onNewRequest} /></td>
             <td className="row-copy">
               <button className="icon" aria-label={`Copy ${k}`} title="Copy value" onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(v); }}><Copy size={12} /></button>
             </td>
@@ -207,7 +211,7 @@ function HeaderTable({ rows, query, selectedName, onPick, empty }: { rows: [stri
   );
 }
 
-export function HeadersView({ res, sent, selectedName, onPick, lead }: { res: HttpResponse; sent?: [string, string][]; selectedName?: string; onPick: (name: string, value: string) => void; lead: React.ReactNode }) {
+export function HeadersView({ res, sent, selectedName, onPick, lead, onNewRequest }: { res: HttpResponse; sent?: [string, string][]; selectedName?: string; onPick: (name: string, value: string) => void; lead: React.ReactNode; onNewRequest?: (url: string) => void }) {
   const [query, setQuery] = useState("");
   const findRef = useRef<HTMLInputElement>(null);
   useFindShortcut(findRef);
@@ -220,7 +224,7 @@ export function HeadersView({ res, sent, selectedName, onPick, lead }: { res: Ht
       </div>
       <div className="payload headers-payload">
         <h4>Response <span className="count">{res.headers.length}</span></h4>
-        <HeaderTable rows={res.headers} query={query} selectedName={selectedName} onPick={onPick} empty="The server sent no headers." />
+        <HeaderTable rows={res.headers} query={query} selectedName={selectedName} onPick={onPick} empty="The server sent no headers." decode onNewRequest={onNewRequest} />
         {sent && (
           <>
             <h4>Request <span className="count">{sent.length}</span><span className="hint">Sent by Tether; the HTTP client may add defaults. Credentials are masked.</span></h4>
