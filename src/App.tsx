@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   METHODS, allRequests, demoWorkspace, findRequest, formatBytes, slug, uid,
   type HistoryEntry, type KV, type Method, type RequestDef, type SendError, type Workspace,
@@ -8,7 +8,8 @@ import {
   type Field, type InsertTarget, type Resolution,
 } from "./refs";
 import { cancel, send } from "./http";
-import { JsonTree } from "./JsonTree";
+import { BodyView, HeadersView } from "./ResponseBody";
+import { maskHeader } from "./markup";
 import {
   ArrowUp, Command, Ellipsis, Folder, FolderPlus, Layers, Plus, Search, SlidersHorizontal, Square, SquarePen, X,
 } from "lucide-react";
@@ -106,7 +107,8 @@ export default function App() {
         result = { error: (e && typeof e === "object" && "kind" in e ? e : { kind: "connection", message: String(e) }) as SendError };
       }
       setPending((p) => (p?.sendId === sendId ? null : p));
-      setWs((w) => ({ ...w, history: [{ ...base, ...result }, ...w.history].slice(0, 200) }));
+      const requestHeaders = hdrs.map(([k, v]): [string, string] => [k, maskHeader(k, v)]);
+      setWs((w) => ({ ...w, history: [{ ...base, requestHeaders, ...result }, ...w.history].slice(0, 200) }));
     },
     [ws],
   );
@@ -359,7 +361,7 @@ export default function App() {
         <header className="toolbar" data-tauri-drag-region>
           <div className="crumbs" data-tauri-drag-region>
             {req ? (
-              <input className="title" value={req.name} onChange={(e) => edit({ name: e.target.value })} aria-label="Request name" spellCheck={false} />
+              <input className="title" value={req.name} size={Math.max(6, req.name.length + 1)} onChange={(e) => edit({ name: e.target.value })} aria-label="Request name" spellCheck={false} />
             ) : <span className="title muted">Tether</span>}
             {dirty && <button className="glass pill" onClick={save} title="Save (⌘S)">Save</button>}
           </div>
@@ -642,12 +644,7 @@ function ResponseView(props: {
   const selected = props.selected && props.selected.entryId === entry?.id ? props.selected : null;
   const pick = (token: string, value: string) => entry && onSelect({ token, value, entryId: entry.id });
   const [tab, setTab] = useState<"body" | "headers">("body");
-  const [raw, setRaw] = useState(false);
   const res = entry?.response;
-  const parsed = useMemo(() => {
-    if (!res) return undefined;
-    try { return { ok: true as const, value: JSON.parse(res.body) as unknown }; } catch { return { ok: false as const }; }
-  }, [res]);
 
   if (loading) return <div className="state"><div className="spinner" aria-hidden /> <p>Sending…</p></div>;
   if (!entry) return <div className="state"><p className="muted">Send the request to see its response here.</p><p className="muted small">Select any response field to reuse it in another request.</p></div>;
@@ -674,6 +671,12 @@ function ResponseView(props: {
 
   const tone = res.status >= 500 ? "bad" : res.status >= 400 ? "warn" : "ok";
   const uses = selected ? downstreamUses(ws, selected.token) : [];
+  const lead = (
+    <div className="tabs inline" role="tablist">
+      <button role="tab" aria-selected={tab === "body"} onClick={() => setTab("body")}>Body</button>
+      <button role="tab" aria-selected={tab === "headers"} onClick={() => setTab("headers")}>Headers <span className="count">{res.headers.length}</span></button>
+    </div>
+  );
   return (
     <div className="response">
       <div className="summary">
@@ -682,25 +685,24 @@ function ResponseView(props: {
         <span><small>Size</small>{formatBytes(res.size)}</span>
         <span className="muted small url" title={entry.url}>{entry.url}</span>
       </div>
-      <div className="tabs" role="tablist">
-        <button role="tab" aria-selected={tab === "body"} onClick={() => setTab("body")}>Body</button>
-        <button role="tab" aria-selected={tab === "headers"} onClick={() => setTab("headers")}>Headers <span className="count">{res.headers.length}</span></button>
-        {tab === "body" && parsed?.ok && <label className="raw-toggle"><input type="checkbox" checked={raw} onChange={(e) => setRaw(e.target.checked)} /> Raw</label>}
-      </div>
-      <div className="payload">
-        {tab === "headers" ? (
-          <table className="hdrs"><tbody>{res.headers.map(([k, v], i) => (
-            <tr key={i} className={selected?.token === `@${sourceSlug}.headers.${k}` ? "sel" : ""} onClick={() => pick(`@${sourceSlug}.headers.${k}`, v)}>
-              <th>{k}</th><td>{v}</td>
-            </tr>))}</tbody></table>
-        ) : parsed?.ok && !raw ? (
-          <JsonTree value={parsed.value} selected={selected?.token.replace(`@${sourceSlug}.body.`, "")} onSelect={(path, value) => pick(`@${sourceSlug}.body.${path.join(".")}`, value)} />
-        ) : res.body.length === 0 ? (
-          <p className="muted pad">Empty body.</p>
-        ) : (
-          <pre className="raw">{res.body.length > 500_000 ? res.body.slice(0, 500_000) + "\n\n… truncated for display (" + formatBytes(res.size) + " total)" : res.body}</pre>
-        )}
-      </div>
+      {tab === "headers" ? (
+        <HeadersView
+          key={entry.id}
+          lead={lead}
+          res={res}
+          sent={entry.requestHeaders}
+          selectedName={selected?.token.startsWith(`@${sourceSlug}.headers.`) ? selected.token.slice(`@${sourceSlug}.headers.`.length) : undefined}
+          onPick={(k, v) => pick(`@${sourceSlug}.headers.${k}`, v)}
+        />
+      ) : (
+        <BodyView
+          key={entry.id}
+          lead={lead}
+          res={res}
+          selectedPath={selected?.token.replace(`@${sourceSlug}.body.`, "")}
+          onSelect={(path, value) => pick(`@${sourceSlug}.body.${path.join(".")}`, value)}
+        />
+      )}
       {selected && (
         <aside className="inspector" aria-label="Field inspector">
           <div className="insp-head">
