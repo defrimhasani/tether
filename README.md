@@ -24,6 +24,18 @@ Click any response field → **Use in request** or **Copy reference**. Unresolve
 
 ⌘↵ send · ⌘. cancel · ⌘S save · ⌘K command palette · ⌘N new request · ⌘E environments
 
-## Status
+## Workspace files
 
-Secrets live in the macOS Keychain (service `dev.tether.app`), never in workspace data. The workspace itself is still in `localStorage`; Git-friendly files on disk are next (#2). Run `cargo test -- --ignored` in `src-tauri` to exercise the real Keychain.
+Choose **Save to folder…** (sidebar or ⌘K) to keep the workspace as plain files you can commit:
+
+```
+tether.json                          collection order
+collections/<collection>/collection.json
+collections/<collection>/<request>.json
+environments/<environment>.json      variables only
+.tether/                             history + selected environment (added to .gitignore)
+```
+
+Secrets are never written to the folder. They stay in the macOS Keychain (service `dev.tether.app`).
+Changes made outside the app (e.g. `git pull`) are picked up when the window regains focus.
+Run `cargo test -- --ignored` in `src-tauri` to exercise the real Keychain.

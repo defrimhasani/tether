@@ -1,4 +1,5 @@
 mod secrets;
+mod workspace;
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -146,13 +147,16 @@ fn cancel_request(id: String, state: tauri::State<'_, InFlight>) {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
   tauri::Builder::default()
+    .plugin(tauri_plugin_dialog::init())
     .manage(InFlight::default())
     .invoke_handler(tauri::generate_handler![
       send_request,
       cancel_request,
       secrets::load_secrets,
       secrets::save_secrets,
-      secrets::delete_secrets
+      secrets::delete_secrets,
+      workspace::read_workspace,
+      workspace::write_workspace
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
