@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { demoWorkspace, type HttpResponse, type Workspace } from "./model";
-import { downstreamUses, getPath, interpolate, resolveToken, tokensIn } from "./refs";
+import { downstreamUses, getPath, interpolate, renameReferences, resolveToken, tokensIn, uniqueName } from "./refs";
 
 const response = (body: string, extra: Partial<HttpResponse> = {}): HttpResponse => ({
   status: 200, statusText: "OK", headers: [["ETag", "abc"]], body, size: body.length, durationMs: 1, ...extra,
@@ -85,5 +85,25 @@ describe("tokensIn / downstreamUses", () => {
   it("finds requests that use a token", () => {
     const uses = downstreamUses(demoWorkspace(), "@create_session.body.json.user");
     expect(uses.map((u) => u.request.name)).toEqual(["Fetch profile"]);
+  });
+});
+
+describe("renameReferences", () => {
+  it("rewrites references to the renamed request only", () => {
+    const ws = demoWorkspace();
+    const profile = { ...ws.collections[0].requests[1], body: "{{@create_session_old.status}} {{ @create_session.status }}" };
+    const out = renameReferences(profile, "create_session", "login");
+    expect(out.url).toBe("{{base_url}}/get?user={{@login.body.json.user}}");
+    expect(out.headers[0].value).toBe("Bearer {{@login.body.json.token}}");
+    expect(out.body).toBe("{{@create_session_old.status}} {{ @login.status }}");
+  });
+});
+
+describe("uniqueName", () => {
+  it("suffixes names whose slug collides with another request", () => {
+    const ws = demoWorkspace();
+    const [login, profile] = ws.collections[0].requests;
+    expect(uniqueName(ws, "Create Session!", profile.id)).toBe("Create Session! 2");
+    expect(uniqueName(ws, "Create session", login.id)).toBe("Create session");
   });
 });

@@ -3,7 +3,7 @@ import {
   METHODS, allRequests, demoWorkspace, findRequest, formatBytes, slug, uid,
   type HistoryEntry, type KV, type Method, type RequestDef, type SendError, type Workspace,
 } from "./model";
-import { downstreamUses, interpolate, resolveToken, tokensIn, type Resolution } from "./refs";
+import { downstreamUses, interpolate, renameReferences, resolveToken, tokensIn, uniqueName, type Resolution } from "./refs";
 import { cancel, send } from "./http";
 import { JsonTree } from "./JsonTree";
 
@@ -59,13 +59,22 @@ export default function App() {
 
   const save = useCallback(() => {
     if (!activeId || !drafts[activeId]) return;
-    const draft = drafts[activeId];
+    const prev = findRequest(ws, activeId);
+    const draft = { ...drafts[activeId], name: uniqueName(ws, drafts[activeId].name, activeId) };
+    const from = prev ? slug(prev.name) : "";
+    const to = slug(draft.name);
+    // Keep references to this request working after a rename, in saved requests and open drafts alike.
+    const fix = (r: RequestDef) => (prev ? renameReferences(r, from, to) : r);
     setWs((w) => ({
       ...w,
-      collections: w.collections.map((c) => ({ ...c, requests: c.requests.map((r) => (r.id === draft.id ? draft : r)) })),
+      collections: w.collections.map((c) => ({ ...c, requests: c.requests.map((r) => fix(r.id === draft.id ? draft : r)) })),
     }));
-    setDrafts((d) => { const next = { ...d }; delete next[activeId]; return next; });
-  }, [activeId, drafts]);
+    setDrafts((d) => {
+      const next: Record<string, RequestDef> = {};
+      for (const [id, r] of Object.entries(d)) if (id !== activeId) next[id] = fix(r);
+      return next;
+    });
+  }, [activeId, drafts, ws]);
 
   const sendRequest = useCallback(
     async (target: RequestDef) => {
