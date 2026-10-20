@@ -1,3 +1,4 @@
+import { ChevronRight } from "lucide-react";
 import { useState } from "react";
 
 type Props = { value: unknown; selected?: string; onSelect: (path: string[], value: string) => void };
@@ -30,11 +31,18 @@ function Node({ k, value, path, depth, selected, onSelect, last }: Props & { k: 
   }
   const entries = Array.isArray(value) ? value.map((v, i) => [String(i), v] as const) : Object.entries(value as object);
   const [o, c] = Array.isArray(value) ? ["[", "]"] : ["{", "}"];
+  if (entries.length === 0)
+    return (
+      <div className={`j-line ${isSel ? "sel" : ""}`} style={{ paddingLeft: depth * 14 }} role="treeitem" tabIndex={0}
+        onClick={pick} onKeyDown={(e) => e.key === "Enter" && pick()}>
+        {key}<span className="j-null">{o}{c}</span>{comma}
+      </div>
+    );
   return (
     <div role="treeitem" aria-expanded={open}>
       <div className={`j-line ${isSel ? "sel" : ""}`} style={{ paddingLeft: depth * 14 }} tabIndex={0}
         onClick={pick} onKeyDown={(e) => { if (e.key === "Enter") pick(); if (e.key === "ArrowLeft") setOpen(false); if (e.key === "ArrowRight") setOpen(true); }}>
-        <button className="j-tog" aria-label={open ? "Collapse" : "Expand"} onClick={(e) => { e.stopPropagation(); setOpen(!open); }}>{open ? "▾" : "▸"}</button>
+        <button className="j-tog" aria-label={open ? "Collapse" : "Expand"} onClick={(e) => { e.stopPropagation(); setOpen(!open); }}><ChevronRight size={11} className={open ? "open" : ""} /></button>
         {key}{o}{!open && <span className="muted"> {entries.length} {Array.isArray(value) ? "items" : "keys"} </span>}{!open && c + comma}
       </div>
       {open && entries.map(([ck, cv], i) => (

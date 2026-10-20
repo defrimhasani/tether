@@ -9,6 +9,9 @@ import {
 } from "./refs";
 import { cancel, send } from "./http";
 import { JsonTree } from "./JsonTree";
+import {
+  ArrowUp, Command, Ellipsis, Folder, FolderPlus, Layers, Plus, Search, SlidersHorizontal, Square, SquarePen, X,
+} from "lucide-react";
 import * as ops from "./workspace-ops";
 import { useWorkspace } from "./useWorkspace";
 
@@ -226,16 +229,20 @@ export default function App() {
   return (
     <div className="shell">
       <aside className="sidebar" aria-label="Workspace">
-        <div className="brand">
-          <span className="logo" aria-hidden>⟜</span> Tether
+        <div className="sidebar-top" data-tauri-drag-region>
+          <button className="tool" aria-label="New request" title="New request (⌘N)" onClick={() => addRequest()}><SquarePen size={16} /></button>
         </div>
+        <label className="search">
+          <Search size={13} aria-hidden />
+          <input placeholder="Search" value={filter} onChange={(e) => { setFilter(e.target.value); setSidebarTab("collections"); }} aria-label="Filter requests" />
+          {filter && <button className="clear" aria-label="Clear search" onClick={() => setFilter("")}><X size={11} /></button>}
+        </label>
         <div className="seg" role="tablist">
           <button role="tab" aria-selected={sidebarTab === "collections"} onClick={() => setSidebarTab("collections")}>Collections</button>
           <button role="tab" aria-selected={sidebarTab === "history"} onClick={() => setSidebarTab("history")}>History</button>
         </div>
         {sidebarTab === "collections" ? (
           <>
-            <input className="filter" placeholder="Filter requests" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Filter requests" />
             <nav className="tree">
               {ws.collections.length === 0 && (
                 <div className="empty-side">
@@ -271,8 +278,8 @@ export default function App() {
                         <span onDoubleClick={() => setRenamingCol(c.id)}>{c.name}</span>
                       )}
                       <span className="row-actions">
-                        <button className="icon" title="New request in collection" aria-label={`New request in ${c.name}`} onClick={() => addRequest(c.id)}>+</button>
-                        <button className="icon" aria-label={`${c.name} actions`} aria-expanded={menu === c.id} onClick={() => setMenu(menu === c.id ? null : c.id)}>⋯</button>
+                        <button className="icon" title="New request in collection" aria-label={`New request in ${c.name}`} onClick={() => addRequest(c.id)}><Plus size={14} /></button>
+                        <button className="icon" aria-label={`${c.name} actions`} aria-expanded={menu === c.id} onClick={() => setMenu(menu === c.id ? null : c.id)}><Ellipsis size={14} /></button>
                       </span>
                       {menu === c.id && (
                         <Menu onClose={() => setMenu(null)} items={[
@@ -298,7 +305,7 @@ export default function App() {
                           <span className="name">{(drafts[r.id] ?? r).name}</span>
                           {drafts[r.id] && <span className="dot" title="Unsaved changes" aria-label="Unsaved" />}
                         </button>
-                        <button className="icon row-menu" aria-label={`${r.name} actions`} aria-expanded={menu === r.id} onClick={() => setMenu(menu === r.id ? null : r.id)}>⋯</button>
+                        <button className="icon row-menu" aria-label={`${r.name} actions`} aria-expanded={menu === r.id} onClick={() => setMenu(menu === r.id ? null : r.id)}><Ellipsis size={14} /></button>
                         {menu === r.id && (
                           <Menu onClose={() => setMenu(null)} items={[
                             { label: "Rename", run: () => { open(r.id); setTimeout(() => document.querySelector<HTMLInputElement>(".title")?.select()); } },
@@ -317,7 +324,7 @@ export default function App() {
               {q && !ws.collections.some((c) => c.requests.some((r) => r.name.toLowerCase().includes(q) || r.url.toLowerCase().includes(q))) && (
                 <p className="muted small pad">No requests match “{filter}”.</p>
               )}
-              {!q && <button className="new-col" onClick={addCollection}>+ New collection</button>}
+              {!q && <button className="new-col" onClick={addCollection}><FolderPlus size={14} /> New collection</button>}
             </nav>
           </>
         ) : (
@@ -332,20 +339,13 @@ export default function App() {
             ))}
           </nav>
         )}
-        {canUseFolders && (
-          <div className="folder">
-            {folder ? (
-              <>
-                <span title={folder}>📁 {folder.split("/").pop()}</span>
-                <button className="link" onClick={openFolder}>Change</button>
-              </>
-            ) : (
-              <button className="link" onClick={openFolder} title="Save collections as files you can commit to Git">Save to folder…</button>
-            )}
-          </div>
-        )}
         <footer className="side-foot">
-          <kbd>⌘K</kbd> Commands
+          {canUseFolders ? (
+            <button className="folder" onClick={openFolder} title={folder ? `${folder}\nClick to open another folder` : "Save collections as files you can commit to Git"}>
+              <Folder size={14} aria-hidden />
+              <span>{folder ? folder.split("/").pop() : "Save to folder…"}</span>
+            </button>
+          ) : <span className="folder muted"><Folder size={14} aria-hidden /><span>Stored in this browser</span></span>}
         </footer>
       </aside>
 
@@ -353,47 +353,49 @@ export default function App() {
         {notice && (
           <div className={`banner ${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}>
             {notice.text}
-            <button className="icon" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button>
+            <button className="icon" aria-label="Dismiss" onClick={() => setNotice(null)}><X size={13} /></button>
           </div>
         )}
-        <header className="topbar">
-          <div className="crumbs">
+        <header className="toolbar" data-tauri-drag-region>
+          <div className="crumbs" data-tauri-drag-region>
             {req ? (
-              <input className="title" value={req.name} onChange={(e) => edit({ name: e.target.value })} aria-label="Request name" />
-            ) : <span className="muted">No request selected</span>}
-            {dirty && <button className="ghost small" onClick={save}>Save <kbd>⌘S</kbd></button>}
+              <input className="title" value={req.name} onChange={(e) => edit({ name: e.target.value })} aria-label="Request name" spellCheck={false} />
+            ) : <span className="title muted">Tether</span>}
+            {dirty && <button className="glass pill" onClick={save} title="Save (⌘S)">Save</button>}
           </div>
-          <div className="env">
-            <label htmlFor="env">Environment</label>
-            <select id="env" value={ws.activeEnvId ?? ""} onChange={(e) => setWs((w) => ({ ...w, activeEnvId: e.target.value || null }))}>
-              <option value="">None</option>
+          <div className="glass group env">
+            <Layers size={14} aria-hidden />
+            <select value={ws.activeEnvId ?? ""} onChange={(e) => setWs((w) => ({ ...w, activeEnvId: e.target.value || null }))} aria-label="Environment">
+              <option value="">No environment</option>
               {ws.environments.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
             </select>
-            <button className="ghost small" onClick={() => setEnvOpen(true)}>Edit</button>
+            <span className="sep" aria-hidden />
+            <button aria-label="Edit environments" title="Edit environments (⌘E)" onClick={() => setEnvOpen(true)}><SlidersHorizontal size={14} /></button>
           </div>
+          <button className="glass tool round" aria-label="Command palette" title="Commands (⌘K)" onClick={() => setPalette(true)}><Command size={15} /></button>
         </header>
 
         {!req ? (
           <div className="first-run">
             <h1>Start with a request</h1>
             <p>Everything stays on this Mac. No account required.</p>
-            <button className="primary" onClick={() => addRequest()}>New request <kbd>⌘N</kbd></button>
+            <button className="primary" onClick={() => addRequest()}><SquarePen size={14} /> New request <kbd>⌘N</kbd></button>
           </div>
         ) : (
           <>
-            <form className="urlbar" onSubmit={(e) => { e.preventDefault(); sendRequest(req); }}>
+            <form className="urlbar glass" onSubmit={(e) => { e.preventDefault(); sendRequest(req); }}>
               <select className={`method m-${req.method}`} value={req.method} onChange={(e) => edit({ method: e.target.value as Method })} aria-label="Method">
                 {METHODS.map((m) => <option key={m}>{m}</option>)}
               </select>
               <TemplateInput ws={ws} value={req.url} onChange={(url) => edit({ url })} onCursor={(pos) => (cursors.current[req.id] = { field: "url", pos })} placeholder="https://api.example.com/resource" />
               {pending?.requestId === req.id ? (
-                <button type="button" className="primary danger" onClick={() => cancel(pending.sendId)}>Cancel <kbd>⌘.</kbd></button>
+                <button type="button" className="send cancel" onClick={() => cancel(pending.sendId)} title="Cancel (⌘.)"><Square size={11} fill="currentColor" /> Cancel</button>
               ) : (
-                <button type="submit" className="primary">Send <kbd>⌘↵</kbd></button>
+                <button type="submit" className="send" title="Send (⌘↵)">Send <ArrowUp size={14} strokeWidth={2.5} /></button>
               )}
             </form>
 
-            <div className="narrow-tabs" role="tablist">
+            <div className="narrow-tabs seg" role="tablist">
               <button role="tab" aria-selected={narrowView === "request"} onClick={() => setNarrowView("request")}>Request</button>
               <button role="tab" aria-selected={narrowView === "response"} onClick={() => setNarrowView("response")}>Response</button>
             </div>
@@ -552,10 +554,10 @@ function KVTable({ rows, onChange, ws, keyPlaceholder, secret, onCursor }: { row
           ) : (
             <input className="mono" type={secret ? "password" : "text"} value={r.value} placeholder="Value" onChange={(e) => set(i, { value: e.target.value })} aria-label="Value" />
           )}
-          <button className="icon" aria-label="Remove" onClick={() => onChange(rows.filter((_, j) => j !== i))}>×</button>
+          <button className="icon" aria-label="Remove" onClick={() => onChange(rows.filter((_, j) => j !== i))}><X size={13} /></button>
         </div>
       ))}
-      <button className="ghost small add" onClick={() => onChange([...rows, { key: "", value: "", enabled: true }])}>+ Add</button>
+      <button className="ghost small add" onClick={() => onChange([...rows, { key: "", value: "", enabled: true }])}><Plus size={13} /> Add</button>
     </div>
   );
 }
@@ -703,7 +705,7 @@ function ResponseView(props: {
         <aside className="inspector" aria-label="Field inspector">
           <div className="insp-head">
             <code className="ref">{`{{${selected.token}}}`}</code>
-            <button className="icon" aria-label="Close inspector" onClick={() => onSelect(null)}>×</button>
+            <button className="icon" aria-label="Close inspector" onClick={() => onSelect(null)}><X size={13} /></button>
           </div>
           <dl>
             <dt>Value</dt><dd><code className="val">{selected.value}</code></dd>
@@ -829,7 +831,7 @@ function EnvEditor({ ws, setWs, onClose }: { ws: Workspace; setWs: React.Dispatc
           {ws.environments.map((e) => (
             <button key={e.id} aria-current={e.id === sel} onClick={() => setSel(e.id)}>{e.name}{e.id === ws.activeEnvId && <small> · active</small>}</button>
           ))}
-          <button className="ghost small" onClick={add}>+ New environment</button>
+          <button className="ghost small" onClick={add}><Plus size={13} /> New environment</button>
         </aside>
         <div className="modal-body">
           {env ? (
