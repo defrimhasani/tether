@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { decodeResponse, toBase64, type RawResponse } from "./body";
 import type { HttpResponse, SendError } from "./model";
 
 export type Outgoing = { id: string; method: string; url: string; headers: [string, string][]; body?: string; timeoutMs?: number };
@@ -6,7 +7,7 @@ export type Outgoing = { id: string; method: string; url: string; headers: [stri
 const controllers = new Map<string, AbortController>();
 
 export async function send(req: Outgoing): Promise<HttpResponse> {
-  if (isTauri()) return invoke<HttpResponse>("send_request", { req });
+  if (isTauri()) return decodeResponse(await invoke<RawResponse>("send_request", { req }));
 
   // Browser preview fallback (subject to CORS); the desktop app uses the Rust client.
   const ctrl = new AbortController();
@@ -17,14 +18,15 @@ export async function send(req: Outgoing): Promise<HttpResponse> {
   try {
     const res = await fetch(req.url, { method: req.method, headers: req.headers, body: req.body, signal: ctrl.signal });
     const buf = await res.arrayBuffer();
-    return {
+    return decodeResponse({
       status: res.status,
       statusText: res.statusText,
       headers: [...res.headers.entries()],
-      body: new TextDecoder().decode(buf),
+      bodyBase64: toBase64(new Uint8Array(buf)),
+      truncated: false,
       size: buf.byteLength,
       durationMs: Math.round(performance.now() - started),
-    };
+    });
   } catch (e) {
     if (ctrl.signal.aborted)
       throw (ctrl.signal.reason === "timeout" ? { kind: "timeout", afterMs: timeoutMs } : { kind: "cancelled" }) satisfies SendError;
