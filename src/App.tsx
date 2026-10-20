@@ -3,7 +3,10 @@ import {
   METHODS, allRequests, demoWorkspace, findRequest, formatBytes, slug, uid,
   type HistoryEntry, type KV, type Method, type RequestDef, type SendError, type Workspace,
 } from "./model";
-import { downstreamUses, interpolate, renameReferences, resolveToken, tokensIn, uniqueName, type Resolution } from "./refs";
+import {
+  downstreamUses, insertReference, interpolate, renameReferences, resolveToken, suggestTarget, tokensIn, uniqueName,
+  type Field, type InsertTarget, type Resolution,
+} from "./refs";
 import { cancel, send } from "./http";
 import { JsonTree } from "./JsonTree";
 
@@ -29,6 +32,8 @@ function persist(ws: Workspace) {
 }
 
 type Pending = { requestId: string; sendId: string };
+type Selection = { token: string; value: string; entryId: string };
+type Cursor = { field: Field; pos: number };
 
 export default function App() {
   const [ws, setWs] = useState<Workspace>(load);
@@ -42,7 +47,13 @@ export default function App() {
   const [sidebarTab, setSidebarTab] = useState<"collections" | "history">("collections");
   const [filter, setFilter] = useState("");
   const [split, setSplit] = useState(() => Number(localStorage.getItem("tether.split")) || 0.5);
-  const [selectedField, setSelectedField] = useState<{ token: string; value: string } | null>(null);
+  const [selectedField, setSelectedField] = useState<Selection | null>(null);
+  const cursors = useRef<Record<string, Cursor>>({});
+  const recent = useRef<string[]>([]);
+
+  useEffect(() => {
+    if (activeId) recent.current = [activeId, ...recent.current.filter((id) => id !== activeId)].slice(0, 20);
+  }, [activeId]);
 
   useEffect(() => persist(ws), [ws]);
   useEffect(() => localStorage.setItem("tether.split", String(split)), [split]);
@@ -121,18 +132,13 @@ export default function App() {
     setViewing(null);
   };
 
-  const useInRequest = (token: string) => {
-    if (!req) return;
-    // Prefer the Authorization header for token-like fields, otherwise append to the body/URL.
-    const ref = `{{${token}}}`;
-    if (/token|jwt|access/i.test(token)) {
-      const others = req.headers.filter((h) => h.key.toLowerCase() !== "authorization");
-      edit({ headers: [...others, { key: "Authorization", value: `Bearer ${ref}`, enabled: true }] });
-    } else if (!["GET", "HEAD"].includes(req.method)) {
-      edit({ body: req.body ? `${req.body}\n${ref}` : ref });
-    } else {
-      edit({ url: req.url + ref });
-    }
+  const useInRequest = (targetId: string, token: string, target: InsertTarget) => {
+    const base = drafts[targetId] ?? findRequest(ws, targetId);
+    if (!base) return;
+    setDrafts((d) => ({ ...d, [targetId]: insertReference(base, token, target) }));
+    setActiveId(targetId);
+    setViewing(null);
+    setSelectedField(null);
     setNarrowView("request");
   };
 
@@ -240,7 +246,7 @@ export default function App() {
               <select className={`method m-${req.method}`} value={req.method} onChange={(e) => edit({ method: e.target.value as Method })} aria-label="Method">
                 {METHODS.map((m) => <option key={m}>{m}</option>)}
               </select>
-              <TemplateInput ws={ws} value={req.url} onChange={(url) => edit({ url })} placeholder="https://api.example.com/resource" />
+              <TemplateInput ws={ws} value={req.url} onChange={(url) => edit({ url })} onCursor={(pos) => (cursors.current[req.id] = { field: "url", pos })} placeholder="https://api.example.com/resource" />
               {pending?.requestId === req.id ? (
                 <button type="button" className="primary danger" onClick={() => cancel(pending.sendId)}>Cancel <kbd>⌘.</kbd></button>
               ) : (
@@ -255,7 +261,7 @@ export default function App() {
 
             <div className="panes" data-view={narrowView} style={{ ["--split" as string]: `${split * 100}%` }}>
               <section className="pane request-pane" aria-label="Request">
-                <RequestEditor req={req} edit={edit} ws={ws} />
+                <RequestEditor req={req} edit={edit} ws={ws} onCursor={(c) => (cursors.current[req.id] = c)} />
                 <References ws={ws} req={req} onSend={sendById} onEnv={() => setEnvOpen(true)} />
               </section>
               <Splitter onChange={setSplit} />
@@ -268,7 +274,9 @@ export default function App() {
                   selected={selectedField}
                   onSelect={setSelectedField}
                   onUse={useInRequest}
-                  canUse={!!entry && entry.requestId !== req.id}
+                  defaultTargetId={recent.current.find((id) => id !== entry?.requestId && findRequest(ws, id)) ?? allRequests(ws).find(({ request }) => request.id !== entry?.requestId)?.request.id}
+                  cursorFor={(id) => cursors.current[id]}
+                  draftFor={(id) => drafts[id] ?? findRequest(ws, id)}
                   onRetry={() => sendRequest(req)}
                   onEnv={() => setEnvOpen(true)}
                 />
@@ -305,7 +313,7 @@ function StatusChip({ entry }: { entry: HistoryEntry }) {
   return <span className="chip bad">{entry.error?.kind === "cancelled" ? "—" : "ERR"}</span>;
 }
 
-function TemplateInput({ ws, value, onChange, placeholder, multiline }: { ws: Workspace; value: string; onChange: (v: string) => void; placeholder?: string; multiline?: boolean }) {
+function TemplateInput({ ws, value, onChange, onCursor, placeholder, multiline }: { ws: Workspace; value: string; onChange: (v: string) => void; onCursor?: (pos: number) => void; placeholder?: string; multiline?: boolean }) {
   // Overlay highlights {{tokens}} by resolution state beneath a transparent native input.
   const parts = value.split(/(\{\{[^}]+\}\})/g);
   const overlay = parts.map((p, i) => {
@@ -314,7 +322,8 @@ function TemplateInput({ ws, value, onChange, placeholder, multiline }: { ws: Wo
     const r = resolveToken(ws, m[1]);
     return <mark key={i} className={r.ok ? (r.kind === "response" ? "ref" : "var") : "broken"}>{p}</mark>;
   });
-  const props = { value, placeholder, spellCheck: false, onChange: (e: { target: { value: string } }) => onChange(e.target.value) };
+  const track = (e: { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => onCursor?.(e.currentTarget.selectionStart ?? value.length);
+  const props = { value, placeholder, spellCheck: false, onChange: (e: { target: { value: string } }) => onChange(e.target.value), onSelect: track, onBlur: track };
   return (
     <div className={`tpl ${multiline ? "multi" : ""}`}>
       <div className="tpl-overlay" aria-hidden>{overlay}{multiline ? "\n" : ""}</div>
@@ -323,7 +332,7 @@ function TemplateInput({ ws, value, onChange, placeholder, multiline }: { ws: Wo
   );
 }
 
-function RequestEditor({ req, edit, ws }: { req: RequestDef; edit: (p: Partial<RequestDef>) => void; ws: Workspace }) {
+function RequestEditor({ req, edit, ws, onCursor }: { req: RequestDef; edit: (p: Partial<RequestDef>) => void; ws: Workspace; onCursor: (c: Cursor) => void }) {
   const [tab, setTab] = useState<"headers" | "body">(req.body ? "body" : "headers");
   const enabledHeaders = req.headers.filter((h) => h.enabled).length;
   const bodyDisabled = req.method === "GET" || req.method === "HEAD";
@@ -334,18 +343,18 @@ function RequestEditor({ req, edit, ws }: { req: RequestDef; edit: (p: Partial<R
         <button role="tab" aria-selected={tab === "body"} onClick={() => setTab("body")}>Body</button>
       </div>
       {tab === "headers" ? (
-        <KVTable rows={req.headers} onChange={(headers) => edit({ headers })} ws={ws} keyPlaceholder="Header" />
+        <KVTable rows={req.headers} onChange={(headers) => edit({ headers })} ws={ws} keyPlaceholder="Header" onCursor={(i, pos) => onCursor({ field: `header:${i}`, pos })} />
       ) : (
         <div className="body-edit">
           {bodyDisabled && <p className="note">{req.method} requests are sent without a body.</p>}
-          <TemplateInput ws={ws} multiline value={req.body} onChange={(body) => edit({ body })} placeholder='{ "key": "value" }' />
+          <TemplateInput ws={ws} multiline value={req.body} onChange={(body) => edit({ body })} onCursor={(pos) => onCursor({ field: "body", pos })} placeholder='{ "key": "value" }' />
         </div>
       )}
     </div>
   );
 }
 
-function KVTable({ rows, onChange, ws, keyPlaceholder, secret }: { rows: KV[]; onChange: (r: KV[]) => void; ws?: Workspace; keyPlaceholder: string; secret?: boolean }) {
+function KVTable({ rows, onChange, ws, keyPlaceholder, secret, onCursor }: { rows: KV[]; onChange: (r: KV[]) => void; ws?: Workspace; keyPlaceholder: string; secret?: boolean; onCursor?: (row: number, pos: number) => void }) {
   const set = (i: number, patch: Partial<KV>) => onChange(rows.map((r, j) => (i === j ? { ...r, ...patch } : r)));
   return (
     <div className="kv">
@@ -354,7 +363,7 @@ function KVTable({ rows, onChange, ws, keyPlaceholder, secret }: { rows: KV[]; o
           <input type="checkbox" checked={r.enabled} onChange={(e) => set(i, { enabled: e.target.checked })} aria-label="Enabled" />
           <input className="mono" value={r.key} placeholder={keyPlaceholder} onChange={(e) => set(i, { key: e.target.value })} aria-label="Name" />
           {ws ? (
-            <TemplateInput ws={ws} value={r.value} onChange={(value) => set(i, { value })} placeholder="Value" />
+            <TemplateInput ws={ws} value={r.value} onChange={(value) => set(i, { value })} onCursor={(pos) => onCursor?.(i, pos)} placeholder="Value" />
           ) : (
             <input className="mono" type={secret ? "password" : "text"} value={r.value} placeholder="Value" onChange={(e) => set(i, { value: e.target.value })} aria-label="Value" />
           )}
@@ -436,10 +445,15 @@ function Splitter({ onChange }: { onChange: (v: number) => void }) {
 
 function ResponseView(props: {
   entry?: HistoryEntry; loading: boolean; sourceSlug: string; ws: Workspace;
-  selected: { token: string; value: string } | null; onSelect: (s: { token: string; value: string } | null) => void;
-  onUse: (token: string) => void; canUse: boolean; onRetry: () => void; onEnv: () => void;
+  selected: Selection | null; onSelect: (s: Selection | null) => void;
+  onUse: (targetId: string, token: string, target: InsertTarget) => void; defaultTargetId?: string;
+  cursorFor: (id: string) => Cursor | undefined; draftFor: (id: string) => RequestDef | undefined;
+  onRetry: () => void; onEnv: () => void;
 }) {
-  const { entry, loading, sourceSlug, ws, selected, onSelect, onUse, canUse, onRetry, onEnv } = props;
+  const { entry, loading, sourceSlug, ws, onSelect, onRetry, onEnv } = props;
+  // A selection belongs to the response it was made in (#6).
+  const selected = props.selected && props.selected.entryId === entry?.id ? props.selected : null;
+  const pick = (token: string, value: string) => entry && onSelect({ token, value, entryId: entry.id });
   const [tab, setTab] = useState<"body" | "headers">("body");
   const [raw, setRaw] = useState(false);
   const res = entry?.response;
@@ -489,11 +503,11 @@ function ResponseView(props: {
       <div className="payload">
         {tab === "headers" ? (
           <table className="hdrs"><tbody>{res.headers.map(([k, v], i) => (
-            <tr key={i} className={selected?.token === `@${sourceSlug}.headers.${k}` ? "sel" : ""} onClick={() => onSelect({ token: `@${sourceSlug}.headers.${k}`, value: v })}>
+            <tr key={i} className={selected?.token === `@${sourceSlug}.headers.${k}` ? "sel" : ""} onClick={() => pick(`@${sourceSlug}.headers.${k}`, v)}>
               <th>{k}</th><td>{v}</td>
             </tr>))}</tbody></table>
         ) : parsed?.ok && !raw ? (
-          <JsonTree value={parsed.value} selected={selected?.token.replace(`@${sourceSlug}.body.`, "")} onSelect={(path, value) => onSelect({ token: `@${sourceSlug}.body.${path.join(".")}`, value })} />
+          <JsonTree value={parsed.value} selected={selected?.token.replace(`@${sourceSlug}.body.`, "")} onSelect={(path, value) => pick(`@${sourceSlug}.body.${path.join(".")}`, value)} />
         ) : res.body.length === 0 ? (
           <p className="muted pad">Empty body.</p>
         ) : (
@@ -511,14 +525,72 @@ function ResponseView(props: {
             <dt>Used by</dt>
             <dd>{uses.length ? uses.map((u) => u.request.name).join(", ") : <span className="muted">No requests yet</span>}</dd>
           </dl>
-          <div className="insp-actions">
-            <button className="primary small" disabled={!canUse} onClick={() => onUse(selected.token)} title={canUse ? "" : "Open another request to insert this reference"}>Use in request</button>
-            <button className="ghost small" onClick={() => navigator.clipboard.writeText(`{{${selected.token}}}`)}>Copy reference</button>
-          </div>
-          {!canUse && <p className="muted small">Open the request that needs this value, then choose Use in request.</p>}
+          <UseIn
+            key={selected.token}
+            ws={ws}
+            token={selected.token}
+            sourceId={entry.requestId}
+            defaultTargetId={props.defaultTargetId}
+            cursorFor={props.cursorFor}
+            draftFor={props.draftFor}
+            onUse={props.onUse}
+          />
         </aside>
       )}
     </div>
+  );
+}
+
+function UseIn({ ws, token, sourceId, defaultTargetId, cursorFor, draftFor, onUse }: {
+  ws: Workspace; token: string; sourceId: string; defaultTargetId?: string;
+  cursorFor: (id: string) => Cursor | undefined; draftFor: (id: string) => RequestDef | undefined;
+  onUse: (targetId: string, token: string, target: InsertTarget) => void;
+}) {
+  const others = allRequests(ws).filter(({ request }) => request.id !== sourceId);
+  const [targetId, setTargetId] = useState(defaultTargetId ?? "");
+  const target = draftFor(targetId);
+  const cursor = cursorFor(targetId);
+  const initial = (id: string) => {
+    if (cursorFor(id)) return { kind: "cursor" as const, name: "" };
+    const r = draftFor(id);
+    const t = suggestTarget(token, r?.method ?? "GET");
+    return { kind: t.kind, name: t.kind === "cursor" ? "" : t.name };
+  };
+  const [placement, setPlacement] = useState(() => initial(targetId));
+  const fieldLabel = (f: Field) => (f === "url" ? "URL" : f === "body" ? "body" : `header “${target?.headers[Number(f.split(":")[1])]?.key || "…"}”`);
+
+  if (!others.length) return <p className="muted small">Create another request to reuse this value in it.</p>;
+
+  const apply = () => {
+    if (!target) return;
+    const t: InsertTarget = placement.kind === "cursor" && cursor ? { kind: "cursor", ...cursor } : { kind: placement.kind as "header" | "query" | "body", name: placement.name.trim() };
+    onUse(targetId, token, t);
+  };
+  const needsName = placement.kind !== "cursor";
+  return (
+    <form className="use-in" onSubmit={(e) => { e.preventDefault(); apply(); }}>
+      <label>
+        <span>Use in</span>
+        <select value={targetId} onChange={(e) => { setTargetId(e.target.value); setPlacement(initial(e.target.value)); }}>
+          {!targetId && <option value="">Choose a request…</option>}
+          {others.map(({ request }) => <option key={request.id} value={request.id}>{request.name}</option>)}
+        </select>
+      </label>
+      <label>
+        <span>As</span>
+        <select value={placement.kind} onChange={(e) => setPlacement((p) => ({ ...p, kind: e.target.value as InsertTarget["kind"] }))}>
+          {cursor && <option value="cursor">At cursor in {fieldLabel(cursor.field)}</option>}
+          <option value="header">Header</option>
+          <option value="query">Query parameter</option>
+          <option value="body">JSON body field</option>
+        </select>
+        {needsName && <input className="mono" aria-label="Name" value={placement.name} onChange={(e) => setPlacement((p) => ({ ...p, name: e.target.value }))} placeholder="name" />}
+      </label>
+      <div className="insp-actions">
+        <button type="submit" className="primary small" disabled={!target || (needsName && !placement.name.trim())}>Insert</button>
+        <button type="button" className="ghost small" onClick={() => navigator.clipboard.writeText(`{{${token}}}`)}>Copy reference</button>
+      </div>
+    </form>
   );
 }
 

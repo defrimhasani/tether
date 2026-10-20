@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { demoWorkspace, type HttpResponse, type Workspace } from "./model";
-import { downstreamUses, getPath, interpolate, renameReferences, resolveToken, tokensIn, uniqueName } from "./refs";
+import { downstreamUses, getPath, insertReference, interpolate, renameReferences, resolveToken, suggestTarget, tokensIn, uniqueName } from "./refs";
 
 const response = (body: string, extra: Partial<HttpResponse> = {}): HttpResponse => ({
   status: 200, statusText: "OK", headers: [["ETag", "abc"]], body, size: body.length, durationMs: 1, ...extra,
@@ -105,5 +105,44 @@ describe("uniqueName", () => {
     const [login, profile] = ws.collections[0].requests;
     expect(uniqueName(ws, "Create Session!", profile.id)).toBe("Create Session! 2");
     expect(uniqueName(ws, "Create session", login.id)).toBe("Create session");
+  });
+});
+
+describe("insertReference", () => {
+  const base = demoWorkspace().collections[0].requests[2]; // GET {{base_url}}/status/503, no headers
+  const T = "@create_session.body.json.token";
+
+  it("suggests placement from the field name and method", () => {
+    expect(suggestTarget(T, "GET")).toEqual({ kind: "header", name: "Authorization" });
+    expect(suggestTarget("@a.body.id", "GET")).toEqual({ kind: "query", name: "id" });
+    expect(suggestTarget("@a.body.id", "POST")).toEqual({ kind: "body", name: "id" });
+  });
+
+  it("adds or replaces headers, with Bearer for Authorization", () => {
+    const once = insertReference(base, T, { kind: "header", name: "Authorization" });
+    expect(once.headers).toEqual([{ key: "Authorization", value: `Bearer {{${T}}}`, enabled: true }]);
+    const twice = insertReference(once, "@x.status", { kind: "header", name: "authorization" });
+    expect(twice.headers).toHaveLength(1);
+    expect(insertReference(base, "@x.status", { kind: "header", name: "X-Id" }).headers[0].value).toBe("{{@x.status}}");
+  });
+
+  it("appends query parameters and preserves fragments", () => {
+    expect(insertReference(base, "@a.body.id", { kind: "query", name: "id" }).url).toBe("{{base_url}}/status/503?id={{@a.body.id}}");
+    const r = { ...base, url: "https://x.dev/a?b=1#top" };
+    expect(insertReference(r, "@a.body.id", { kind: "query", name: "id" }).url).toBe("https://x.dev/a?b=1&id={{@a.body.id}}#top");
+  });
+
+  it("sets a JSON body field, or appends to non-JSON bodies", () => {
+    expect(JSON.parse(insertReference(base, "@a.body.id", { kind: "body", name: "id" }).body)).toEqual({ id: "{{@a.body.id}}" });
+    const json = { ...base, body: '{"a":1}' };
+    expect(JSON.parse(insertReference(json, "@a.body.id", { kind: "body", name: "id" }).body)).toEqual({ a: 1, id: "{{@a.body.id}}" });
+    const text = { ...base, body: "hello" };
+    expect(insertReference(text, "@a.body.id", { kind: "body", name: "id" }).body).toBe("hello\n{{@a.body.id}}");
+  });
+
+  it("inserts at a cursor position in the URL, body or a header", () => {
+    expect(insertReference(base, "@a.status", { kind: "cursor", field: "url", pos: 0 }).url).toBe("{{@a.status}}{{base_url}}/status/503");
+    const h = { ...base, headers: [{ key: "X", value: "ab", enabled: true }] };
+    expect(insertReference(h, "@a.status", { kind: "cursor", field: "header:0", pos: 1 }).headers[0].value).toBe("a{{@a.status}}b");
   });
 });
