@@ -116,3 +116,53 @@ export function uniqueName(ws: Workspace, name: string, exceptId: string) {
   while (taken.has(slug(`${name} ${n}`))) n++;
   return `${name} ${n}`;
 }
+
+export type Field = "url" | "body" | `header:${number}`;
+export type InsertTarget =
+  | { kind: "header"; name: string }
+  | { kind: "query"; name: string }
+  | { kind: "body"; name: string }
+  | { kind: "cursor"; field: Field; pos: number };
+
+/** Suggests a parameter name and placement from the referenced path, e.g. `…body.data.token` → Authorization header. */
+export function suggestTarget(token: string, method: RequestDef["method"]): InsertTarget {
+  const name = token.split(".").pop() || "value";
+  if (/token|jwt|access/i.test(name)) return { kind: "header", name: "Authorization" };
+  if (method === "GET" || method === "HEAD") return { kind: "query", name };
+  return { kind: "body", name };
+}
+
+export function insertReference(req: RequestDef, token: string, target: InsertTarget): RequestDef {
+  const ref = `{{${token}}}`;
+  switch (target.kind) {
+    case "header": {
+      const value = target.name.toLowerCase() === "authorization" ? `Bearer ${ref}` : ref;
+      const i = req.headers.findIndex((h) => h.key.toLowerCase() === target.name.toLowerCase());
+      const headers = i < 0
+        ? [...req.headers, { key: target.name, value, enabled: true }]
+        : req.headers.map((h, j) => (j === i ? { ...h, value, enabled: true } : h));
+      return { ...req, headers };
+    }
+    case "query": {
+      const [base, hash] = req.url.split("#", 2);
+      const sep = !base.includes("?") ? "?" : /[?&]$/.test(base) ? "" : "&";
+      return { ...req, url: `${base}${sep}${encodeURIComponent(target.name)}=${ref}${hash !== undefined ? `#${hash}` : ""}` };
+    }
+    case "body": {
+      if (!req.body.trim()) return { ...req, body: JSON.stringify({ [target.name]: ref }, null, 2) };
+      try {
+        const obj = JSON.parse(req.body);
+        if (obj && typeof obj === "object" && !Array.isArray(obj))
+          return { ...req, body: JSON.stringify({ ...obj, [target.name]: ref }, null, 2) };
+      } catch { /* not JSON: append below */ }
+      return { ...req, body: `${req.body.replace(/\n?$/, "\n")}${ref}` };
+    }
+    case "cursor": {
+      const splice = (t: string) => t.slice(0, target.pos) + ref + t.slice(target.pos);
+      if (target.field === "url") return { ...req, url: splice(req.url) };
+      if (target.field === "body") return { ...req, body: splice(req.body) };
+      const i = Number(target.field.split(":")[1]);
+      return { ...req, headers: req.headers.map((h, j) => (j === i ? { ...h, value: splice(h.value) } : h)) };
+    }
+  }
+}

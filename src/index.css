@@ -240,3 +240,11 @@ code.val { background: var(--surface); border: 1px solid var(--line); display: i
   .panes[data-view="request"] .response-pane, .panes[data-view="response"] .request-pane { display: none; }
   .env label { display: none; }
 }
+
+.use-in { display: grid; gap: 6px; }
+.use-in label { display: grid; grid-template-columns: 50px 1fr auto; gap: 6px; align-items: center; font-size: 12px; }
+.use-in label > span { color: var(--ink-3); }
+.use-in label:first-child { grid-template-columns: 50px 1fr; }
+.use-in select, .use-in input { border: 1px solid var(--line-strong); border-radius: var(--r); padding: 3px 6px; background: var(--panel); min-width: 0; }
+.use-in input { width: 140px; }
+.use-in .insp-actions { margin-top: 4px; }
