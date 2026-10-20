@@ -92,3 +92,27 @@ export function interpolate(ws: Workspace, text: string) {
 export function downstreamUses(ws: Workspace, token: string) {
   return allRequests(ws).filter(({ request }) => tokensIn(request).includes(token));
 }
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+/** Rewrites `{{@from.…}}` references to `{{@to.…}}` in every text field of a request. */
+export function renameReferences(req: RequestDef, from: string, to: string): RequestDef {
+  if (from === to) return req;
+  const re = new RegExp(`(\\{\\{\\s*@)${escapeRe(from)}(?=[.\\s}])`, "g");
+  const fix = (t: string) => t.replace(re, `$1${to}`);
+  return {
+    ...req,
+    url: fix(req.url),
+    body: fix(req.body),
+    headers: req.headers.map((h) => ({ ...h, key: fix(h.key), value: fix(h.value) })),
+  };
+}
+
+/** Returns `name`, suffixed if needed so its slug is unique among other requests. */
+export function uniqueName(ws: Workspace, name: string, exceptId: string) {
+  const taken = new Set(allRequests(ws).filter(({ request }) => request.id !== exceptId).map(({ request }) => slug(request.name)));
+  if (!taken.has(slug(name))) return name;
+  let n = 2;
+  while (taken.has(slug(`${name} ${n}`))) n++;
+  return `${name} ${n}`;
+}
