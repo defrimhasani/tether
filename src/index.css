@@ -685,3 +685,27 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .jt-bool { color: var(--purple); }
 .jt-null { color: var(--ink-3); font-style: italic; }
 .jt-punct { color: var(--ink-3); }
+
+/* Agent access */
+.agent-btn { position: relative; }
+.live-dot { position: absolute; top: 5px; right: 5px; width: 7px; height: 7px; border-radius: 50%; background: var(--green); box-shadow: 0 0 0 1.5px var(--canvas); }
+.modal.agent { grid-template-columns: 1fr; grid-template-rows: 1fr auto; width: min(640px, 94vw); height: auto; max-height: 82vh; }
+.modal.agent .modal-foot { padding: 12px 20px 16px; border-top: 0.5px solid var(--sep); }
+.agent-body { padding: 20px 22px 8px; overflow: auto; display: grid; gap: 18px; }
+.agent-body header { display: flex; gap: 12px; align-items: flex-start; }
+.agent-body header h2 { margin: 0 0 2px; font-size: 17px; letter-spacing: -0.01em; }
+.agent-body header p { margin: 0; }
+.agent-body h3 { margin: 0 0 4px; font-size: 13px; }
+.agent-body p { margin: 0; }
+.agent-row { display: flex; justify-content: space-between; align-items: center; gap: 16px; padding: 12px 14px; border-radius: 12px; background: var(--canvas-2); box-shadow: 0 0 0 0.5px var(--sep); }
+.agent-row p { margin-top: 2px; }
+.switch { width: 40px; height: 24px; flex: none; border-radius: 999px; background: var(--fill); padding: 2px; transition: background 200ms var(--ease); }
+.switch span { display: block; width: 20px; height: 20px; border-radius: 50%; background: white; box-shadow: 0 1px 3px rgb(0 0 0 / 0.3); transition: transform 220ms var(--ease); }
+.switch[aria-checked="true"] { background: var(--green); }
+.switch[aria-checked="true"] span { transform: translateX(16px); }
+.switch:disabled { opacity: 0.4; }
+.agent-body .seg { margin: 10px 0 6px; }
+.agent-body .hint { margin: 0 0 6px; }
+.snippet { position: relative; }
+.snippet pre { margin: 0; padding: 12px 14px; padding-right: 84px; border-radius: 10px; background: var(--canvas-2); box-shadow: 0 0 0 0.5px var(--sep); font: 11.5px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; user-select: text; -webkit-user-select: text; }
+.snippet .ghost { position: absolute; top: 8px; right: 8px; background: var(--canvas); }

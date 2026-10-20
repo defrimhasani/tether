@@ -12,10 +12,13 @@ import { BodyView, HeadersView } from "./ResponseBody";
 import { BodyEditor } from "./BodyEditor";
 import { maskHeader } from "./markup";
 import {
-  ArrowUp, Command, Ellipsis, Folder, FolderPlus, Layers, Plus, Search, SlidersHorizontal, Square, SquarePen, X,
+  ArrowUp, Bot, Command, Ellipsis, Folder, FolderPlus, Layers, Plus, Search, SlidersHorizontal, Square, SquarePen, X,
 } from "lucide-react";
 import * as ops from "./workspace-ops";
 import { useWorkspace } from "./useWorkspace";
+import { AgentPanel } from "./agent/AgentPanel";
+import { RpcError, METHOD_NOT_FOUND, INVALID_PARAMS } from "./agent/mcp";
+import { useAgent } from "./agent/useAgent";
 
 type Pending = { requestId: string; sendId: string };
 type Selection = { token: string; value: string; entryId: string };
@@ -31,6 +34,12 @@ export default function App() {
   const [viewing, setViewing] = useState<string | null>(null); // history entry id
   const [palette, setPalette] = useState(false);
   const [envOpen, setEnvOpen] = useState(false);
+  const [agentOpen, setAgentOpen] = useState(false);
+  const agent = useAgent(async ({ method }) => {
+    if (method === "tools/list") return { tools: [] };
+    if (method === "tools/call") throw new RpcError(INVALID_PARAMS, "Unknown tool");
+    throw new RpcError(METHOD_NOT_FOUND, `Method not found: ${method}`);
+  });
   const [narrowView, setNarrowView] = useState<"request" | "response">("request");
   const [sidebarTab, setSidebarTab] = useState<"collections" | "history">("collections");
   const [filter, setFilter] = useState("");
@@ -383,6 +392,9 @@ export default function App() {
             <span className="sep" aria-hidden />
             <button aria-label="Edit environments" title="Edit environments (⌘E)" onClick={() => setEnvOpen(true)}><SlidersHorizontal size={14} /></button>
           </div>
+          <button className="glass tool round agent-btn" aria-label="Agent access" title="Agent access" onClick={() => setAgentOpen(true)}>
+            <Bot size={15} />{agent.enabled && agent.status?.running && <span className="live-dot" aria-label="Agent access is on" />}
+          </button>
           <button className="glass tool round" aria-label="Command palette" title="Commands (⌘K)" onClick={() => setPalette(true)}><Command size={15} /></button>
         </header>
 
@@ -449,6 +461,7 @@ export default function App() {
             { label: "New collection", run: addCollection },
             ...(req ? [{ label: "Duplicate request", run: () => duplicate(req.id) }, { label: "Delete request…", run: () => removeRequest(req) }] : []),
             { label: "Edit environments", hint: "⌘E", run: () => setEnvOpen(true) },
+            { label: "Agent access…", run: () => setAgentOpen(true) },
             ...(canUseFolders ? [{ label: folder ? "Open another workspace folder…" : "Save workspace to folder…", run: openFolder }] : []),
             ...(folder ? [{ label: "Stop syncing with folder", run: closeFolder }] : []),
             ...ws.environments.map((e) => ({ label: `Switch environment: ${e.name}`, run: () => setWs((w) => ({ ...w, activeEnvId: e.id })) })),
@@ -458,6 +471,7 @@ export default function App() {
         />
       )}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
+      {agentOpen && <AgentPanel agent={agent} onClose={() => setAgentOpen(false)} />}
       {envOpen && <EnvEditor ws={ws} setWs={setWs} onClose={() => setEnvOpen(false)} />}
     </div>
   );
