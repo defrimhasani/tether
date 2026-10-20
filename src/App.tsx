@@ -10,27 +10,7 @@ import {
 import { cancel, send } from "./http";
 import { JsonTree } from "./JsonTree";
 import * as ops from "./workspace-ops";
-
-const STORE = "tether.workspace.v1";
-const SECRETS = "tether.secrets.v1";
-
-function load(): Workspace {
-  try {
-    const ws = JSON.parse(localStorage.getItem(STORE) ?? "") as Workspace;
-    const secrets = JSON.parse(localStorage.getItem(SECRETS) ?? "{}") as Record<string, KV[]>;
-    ws.environments = ws.environments.map((e) => ({ ...e, secrets: secrets[e.id] ?? [] }));
-    return ws;
-  } catch {
-    return demoWorkspace();
-  }
-}
-
-function persist(ws: Workspace) {
-  // Secrets are stored apart from shareable definitions; a Keychain backend will replace this.
-  const shareable = { ...ws, environments: ws.environments.map((e) => ({ ...e, secrets: [] })) };
-  localStorage.setItem(STORE, JSON.stringify(shareable));
-  localStorage.setItem(SECRETS, JSON.stringify(Object.fromEntries(ws.environments.map((e) => [e.id, e.secrets]))));
-}
+import { loadSecrets, loadWorkspace, saveSecrets, saveWorkspace, secretsOf } from "./storage";
 
 type Pending = { requestId: string; sendId: string };
 type Selection = { token: string; value: string; entryId: string };
@@ -39,7 +19,7 @@ type Confirm = { title: string; body: React.ReactNode; confirm: string; run: () 
 type Drag = { kind: "request" | "collection"; id: string };
 
 export default function App() {
-  const [ws, setWs] = useState<Workspace>(load);
+  const [ws, setWs] = useState<Workspace>(loadWorkspace);
   const [activeId, setActiveId] = useState<string | null>(() => ws.collections[0]?.requests[0]?.id ?? null);
   const [drafts, setDrafts] = useState<Record<string, RequestDef>>({});
   const [pending, setPending] = useState<Pending | null>(null);
@@ -63,7 +43,27 @@ export default function App() {
     if (activeId) recent.current = [activeId, ...recent.current.filter((id) => id !== activeId)].slice(0, 20);
   }, [activeId]);
 
-  useEffect(() => persist(ws), [ws]);
+  // Secrets load asynchronously (Keychain); don't write any until they have, or we'd erase them.
+  const [secretsReady, setSecretsReady] = useState(false);
+  const [secretsError, setSecretsError] = useState<string | null>(null);
+  const savedSecrets = useRef<Record<string, KV[]>>({});
+  useEffect(() => {
+    loadSecrets(ws.environments.map((e) => e.id))
+      .then((map) => {
+        savedSecrets.current = map;
+        setWs((w) => ({ ...w, environments: w.environments.map((e) => ({ ...e, secrets: map[e.id] ?? [] })) }));
+        setSecretsReady(true);
+      })
+      .catch((e) => setSecretsError(`Couldn’t read secrets from the Keychain: ${e}`));
+  }, []);
+  useEffect(() => saveWorkspace(ws), [ws]);
+  useEffect(() => {
+    if (!secretsReady) return;
+    const next = secretsOf(ws);
+    const prev = savedSecrets.current;
+    savedSecrets.current = next;
+    saveSecrets(next, prev).catch((e) => setSecretsError(`Couldn’t save secrets to the Keychain: ${e}`));
+  }, [ws, secretsReady]);
   useEffect(() => localStorage.setItem("tether.split", String(split)), [split]);
 
   const saved = activeId ? findRequest(ws, activeId) : undefined;
@@ -354,6 +354,12 @@ export default function App() {
       </aside>
 
       <main className="main">
+        {secretsError && (
+          <div className="banner" role="alert">
+            {secretsError}
+            <button className="icon" aria-label="Dismiss" onClick={() => setSecretsError(null)}>×</button>
+          </div>
+        )}
         <header className="topbar">
           <div className="crumbs">
             {req ? (
@@ -833,7 +839,7 @@ function EnvEditor({ ws, setWs, onClose }: { ws: Workspace; setWs: React.Dispatc
               <input className="title" value={env.name} onChange={(e) => update({ name: e.target.value })} aria-label="Environment name" autoFocus />
               <h3>Variables <small className="muted">Shareable — saved with the workspace</small></h3>
               <KVTable rows={env.vars} onChange={(vars) => update({ vars })} keyPlaceholder="name" />
-              <h3>Secrets <small className="muted">Private — never written to shareable files</small></h3>
+              <h3>Secrets <small className="muted">Private — stored in the macOS Keychain, never in workspace files</small></h3>
               <KVTable rows={env.secrets} onChange={(secrets) => update({ secrets })} keyPlaceholder="name" secret />
             </>
           ) : <p className="muted">Create an environment to define variables like <code>{"{{base_url}}"}</code>.</p>}

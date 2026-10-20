@@ -26,4 +26,4 @@ Click any response field → **Use in request** or **Copy reference**. Unresolve
 
 ## Status
 
-Persistence is currently `localStorage`, with secrets stored separately. Next: Git-friendly collection files on disk and macOS Keychain for secrets.
+Secrets live in the macOS Keychain (service `dev.tether.app`), never in workspace data. The workspace itself is still in `localStorage`; Git-friendly files on disk are next (#2). Run `cargo test -- --ignored` in `src-tauri` to exercise the real Keychain.

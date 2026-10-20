@@ -1,3 +1,5 @@
+mod secrets;
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
@@ -145,7 +147,13 @@ fn cancel_request(id: String, state: tauri::State<'_, InFlight>) {
 pub fn run() {
   tauri::Builder::default()
     .manage(InFlight::default())
-    .invoke_handler(tauri::generate_handler![send_request, cancel_request])
+    .invoke_handler(tauri::generate_handler![
+      send_request,
+      cancel_request,
+      secrets::load_secrets,
+      secrets::save_secrets,
+      secrets::delete_secrets
+    ])
     .setup(|app| {
       if cfg!(debug_assertions) {
         app.handle().plugin(
