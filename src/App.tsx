@@ -126,6 +126,14 @@ export default function App() {
     open(r.id);
   };
 
+  const newRequestFromUrl = (url: string) => {
+    const name = (() => { try { const u = new URL(url); return `${u.hostname}${u.pathname === "/" ? "" : u.pathname}`; } catch { return "New request"; } })();
+    const [next, r] = ops.addRequest(ws, undefined, { url, name });
+    setWs(next);
+    open(r.id);
+    setNarrowView("request");
+  };
+
   const addCollection = () => {
     const [next, c] = ops.addCollection(ws);
     setWs(next);
@@ -421,6 +429,7 @@ export default function App() {
                   cursorFor={(id) => cursors.current[id]}
                   draftFor={(id) => drafts[id] ?? findRequest(ws, id)}
                   onRetry={() => sendRequest(req)}
+                  onNewRequest={newRequestFromUrl}
                   onEnv={() => setEnvOpen(true)}
                 />
               </section>
@@ -637,7 +646,7 @@ function ResponseView(props: {
   selected: Selection | null; onSelect: (s: Selection | null) => void;
   onUse: (targetId: string, token: string, target: InsertTarget) => void; defaultTargetId?: string;
   cursorFor: (id: string) => Cursor | undefined; draftFor: (id: string) => RequestDef | undefined;
-  onRetry: () => void; onEnv: () => void;
+  onRetry: () => void; onEnv: () => void; onNewRequest: (url: string) => void;
 }) {
   const { entry, loading, sourceSlug, ws, onSelect, onRetry, onEnv } = props;
   // A selection belongs to the response it was made in (#6).
@@ -689,6 +698,7 @@ function ResponseView(props: {
         <HeadersView
           key={entry.id}
           lead={lead}
+          onNewRequest={props.onNewRequest}
           res={res}
           sent={entry.requestHeaders}
           selectedName={selected?.token.startsWith(`@${sourceSlug}.headers.`) ? selected.token.slice(`@${sourceSlug}.headers.`.length) : undefined}
@@ -698,6 +708,7 @@ function ResponseView(props: {
         <BodyView
           key={entry.id}
           lead={lead}
+          onNewRequest={props.onNewRequest}
           res={res}
           storeKey={entry.requestId}
           selectedPath={selected?.token.replace(`@${sourceSlug}.body.`, "")}
