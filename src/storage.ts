@@ -1,4 +1,5 @@
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { compactEntry } from "./body";
 import { demoWorkspace, type KV, type Workspace } from "./model";
 
 const STORE = "tether.workspace.v1";
@@ -18,7 +19,7 @@ export function loadWorkspace(): Workspace {
 }
 
 export function saveWorkspace(ws: Workspace) {
-  const shareable = { ...ws, environments: ws.environments.map((e) => ({ ...e, secrets: [] })) };
+  const shareable = { ...ws, environments: ws.environments.map((e) => ({ ...e, secrets: [] })), history: ws.history.map(compactEntry) };
   localStorage.setItem(STORE, JSON.stringify(shareable));
 }
 

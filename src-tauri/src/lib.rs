@@ -24,9 +24,55 @@ struct SendResponse {
   status: u16,
   status_text: String,
   headers: Vec<(String, String)>,
-  body: String,
+  /// Body bytes, base64-encoded so binary content survives the IPC boundary intact.
+  body_base64: String,
+  /// Set when only a prefix of the body is inline; the full body is in `body_file`.
+  truncated: bool,
+  body_file: Option<String>,
   size: usize,
   duration_ms: u128,
+}
+
+/// Bodies up to this size travel inline; larger ones are written to disk.
+const INLINE_MAX: usize = 20 * 1024 * 1024;
+/// How much of an oversized body is still sent inline for display.
+const PREVIEW_MAX: usize = 1024 * 1024;
+
+struct Packaged {
+  base64: String,
+  truncated: bool,
+  file: Option<String>,
+}
+
+fn package_body(bytes: &[u8], spill_dir: Option<&std::path::Path>, id: &str) -> Packaged {
+  use base64::Engine;
+  let b64 = |b: &[u8]| base64::engine::general_purpose::STANDARD.encode(b);
+  if bytes.len() <= INLINE_MAX {
+    return Packaged {
+      base64: b64(bytes),
+      truncated: false,
+      file: None,
+    };
+  }
+  let file = spill_dir.and_then(|dir| {
+    std::fs::create_dir_all(dir).ok()?;
+    let safe: String = id
+      .chars()
+      .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
+      .take(64)
+      .collect();
+    let path = dir.join(format!(
+      "{}.bin",
+      if safe.is_empty() { "response" } else { &safe }
+    ));
+    std::fs::write(&path, bytes).ok()?;
+    Some(path.to_string_lossy().into_owned())
+  });
+  Packaged {
+    base64: b64(&bytes[..PREVIEW_MAX]),
+    truncated: true,
+    file,
+  }
 }
 
 #[derive(Debug, Serialize)]
@@ -48,8 +94,11 @@ struct InFlight(Mutex<HashMap<String, CancellationToken>>);
 #[tauri::command]
 async fn send_request(
   req: SendRequest,
+  app: tauri::AppHandle,
   state: tauri::State<'_, InFlight>,
 ) -> Result<SendResponse, SendError> {
+  use tauri::Manager;
+  let spill_dir = app.path().app_cache_dir().ok().map(|d| d.join("responses"));
   let (method, url) = parse_target(&req.method, &req.url)?;
   let timeout_ms = req.timeout_ms.unwrap_or(30_000);
 
@@ -91,13 +140,17 @@ async fn send_request(
       })
       .collect();
     let bytes = res.bytes().await?;
+    let duration_ms = started.elapsed().as_millis();
+    let body = package_body(&bytes, spill_dir.as_deref(), &req.id);
     Ok::<_, reqwest::Error>(SendResponse {
       status: status.as_u16(),
       status_text: status.canonical_reason().unwrap_or("").to_string(),
       headers,
+      body_base64: body.base64,
+      truncated: body.truncated,
+      body_file: body.file,
       size: bytes.len(),
-      body: String::from_utf8_lossy(&bytes).into_owned(),
-      duration_ms: started.elapsed().as_millis(),
+      duration_ms,
     })
   };
 
@@ -215,6 +268,43 @@ mod tests {
     }
     let e = Outer(std::io::Error::other("connection refused"));
     assert_eq!(root_cause(&e), "connection refused");
+  }
+
+  #[test]
+  fn packages_small_bodies_inline_and_exact() {
+    use base64::Engine;
+    let png = [0x89, b'P', b'N', b'G', 0, 0xff, 0xfe];
+    let p = package_body(&png, None, "x");
+    assert!(!p.truncated && p.file.is_none());
+    assert_eq!(
+      base64::engine::general_purpose::STANDARD
+        .decode(p.base64)
+        .unwrap(),
+      png
+    );
+  }
+
+  #[test]
+  fn spills_large_bodies_to_disk() {
+    use base64::Engine;
+    let dir = std::env::temp_dir().join(format!("tether-spill-{}", std::process::id()));
+    let big = vec![7u8; INLINE_MAX + 10];
+    let p = package_body(&big, Some(&dir), "../../big");
+    assert!(p.truncated);
+    assert_eq!(
+      base64::engine::general_purpose::STANDARD
+        .decode(p.base64)
+        .unwrap()
+        .len(),
+      PREVIEW_MAX
+    );
+    let file = p.file.expect("spilled");
+    assert!(
+      std::path::Path::new(&file).starts_with(&dir),
+      "id cannot escape the spill dir"
+    );
+    assert_eq!(std::fs::metadata(&file).unwrap().len() as usize, big.len());
+    std::fs::remove_dir_all(dir).unwrap();
   }
 
   #[test]

@@ -1,3 +1,4 @@
+import { compactEntry } from "./body";
 import { METHODS, slug, type Collection, type Environment, type HistoryEntry, type KV, type Method, type RequestDef, type Workspace } from "./model";
 
 /**
@@ -56,7 +57,7 @@ export function toFiles(ws: Workspace): Files {
     files[`environments/${uniqueIn(envNames, slug(e.name).replace(/_/g, "-"))}.json`] = json({ id: e.id, name: e.name, vars: kvOut(e.vars) });
 
   files[".tether/state.json"] = json({ activeEnvId: ws.activeEnvId });
-  files[".tether/history.json"] = json(ws.history);
+  files[".tether/history.json"] = json(ws.history.map(compactEntry));
   return files;
 }
 

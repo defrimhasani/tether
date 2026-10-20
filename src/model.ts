@@ -20,7 +20,15 @@ export type HttpResponse = {
   status: number;
   statusText: string;
   headers: [string, string][];
+  /** Decoded text; empty for binary bodies. */
   body: string;
+  /** Raw bytes (base64), kept only for binary bodies. */
+  bodyBase64?: string;
+  charset?: string;
+  /** Only part of the body is available in the app. */
+  truncated?: boolean;
+  /** Where the full body was saved when it was too large to keep in memory. */
+  bodyFile?: string | null;
   size: number;
   durationMs: number;
 };

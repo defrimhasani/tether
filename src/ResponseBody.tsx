@@ -2,6 +2,7 @@ import { ChevronsDownUp, ChevronsUpDown, Copy, Search, WrapText, X } from "lucid
 import { useEffect, useMemo, useRef, useState } from "react";
 import { highlight, JsonTree } from "./JsonTree";
 import { contentType, detectKind, formatMarkup, tokenizeMarkup, type BodyKind, type Tok } from "./markup";
+import { isBinaryResponse } from "./body";
 import { formatBytes, type HttpResponse } from "./model";
 
 const MAX_LINES = 5000;
@@ -75,7 +76,7 @@ function Lines({ text, query, wrap, markup }: { text: string; query: string; wra
 }
 
 export function BodyView({ res, selectedPath, onSelect, lead }: { res: HttpResponse; selectedPath?: string; onSelect: (path: string[], value: string) => void; lead: React.ReactNode }) {
-  const kind: BodyKind = useMemo(() => detectKind(res.headers, res.body), [res]);
+  const kind: BodyKind = useMemo(() => (isBinaryResponse(res) ? "binary" : detectKind(res.headers, res.body)), [res]);
   const parsed = useMemo(() => {
     if (kind !== "json") return undefined;
     try { return JSON.parse(res.body) as unknown; } catch { return undefined; }
@@ -94,7 +95,7 @@ export function BodyView({ res, selectedPath, onSelect, lead }: { res: HttpRespo
   const hits = useMemo(() => countHits(mode === "pretty" && parsed !== undefined ? JSON.stringify(parsed, null, 2) : shownText, query), [mode, parsed, shownText, query]);
 
   const bareBar = <div className="body-bar">{lead}</div>;
-  if (res.body.length === 0) return <div className="body-view">{bareBar}<div className="body-empty"><p>No body</p><p className="muted small">The server returned {res.status} with an empty response.</p></div></div>;
+  if (res.size === 0) return <div className="body-view">{bareBar}<div className="body-empty"><p>No body</p><p className="muted small">The server returned {res.status} with an empty response.</p></div></div>;
   if (kind === "binary") {
     return (
       <div className="body-view">
@@ -142,7 +143,12 @@ export function BodyView({ res, selectedPath, onSelect, lead }: { res: HttpRespo
         ) : (
           <Lines text={shownText} query={query} wrap={wrap} markup={mode === "pretty" && (kind === "html" || kind === "xml")} />
         )}
-        {res.body.length > MAX_CHARS && <p className="muted pad">Showing the first {formatBytes(MAX_CHARS)} of {formatBytes(res.size)}.</p>}
+        {(res.truncated || res.body.length > MAX_CHARS) && (
+          <p className="muted pad truncated-note">
+            Showing the first {formatBytes(Math.min(res.body.length, MAX_CHARS))} of {formatBytes(res.size)}.
+            {res.bodyFile ? <> The full body is saved at <code>{res.bodyFile}</code>.</> : res.truncated ? " The rest isn’t kept in history." : null}
+          </p>
+        )}
       </div>
     </div>
   );
