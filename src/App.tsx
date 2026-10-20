@@ -10,7 +10,7 @@ import {
 import { cancel, send } from "./http";
 import { JsonTree } from "./JsonTree";
 import * as ops from "./workspace-ops";
-import { loadSecrets, loadWorkspace, saveSecrets, saveWorkspace, secretsOf } from "./storage";
+import { useWorkspace } from "./useWorkspace";
 
 type Pending = { requestId: string; sendId: string };
 type Selection = { token: string; value: string; entryId: string };
@@ -19,7 +19,7 @@ type Confirm = { title: string; body: React.ReactNode; confirm: string; run: () 
 type Drag = { kind: "request" | "collection"; id: string };
 
 export default function App() {
-  const [ws, setWs] = useState<Workspace>(loadWorkspace);
+  const { ws, setWs, folder, openFolder, closeFolder, canUseFolders, notice, setNotice } = useWorkspace();
   const [activeId, setActiveId] = useState<string | null>(() => ws.collections[0]?.requests[0]?.id ?? null);
   const [drafts, setDrafts] = useState<Record<string, RequestDef>>({});
   const [pending, setPending] = useState<Pending | null>(null);
@@ -43,28 +43,12 @@ export default function App() {
     if (activeId) recent.current = [activeId, ...recent.current.filter((id) => id !== activeId)].slice(0, 20);
   }, [activeId]);
 
-  // Secrets load asynchronously (Keychain); don't write any until they have, or we'd erase them.
-  const [secretsReady, setSecretsReady] = useState(false);
-  const [secretsError, setSecretsError] = useState<string | null>(null);
-  const savedSecrets = useRef<Record<string, KV[]>>({});
-  useEffect(() => {
-    loadSecrets(ws.environments.map((e) => e.id))
-      .then((map) => {
-        savedSecrets.current = map;
-        setWs((w) => ({ ...w, environments: w.environments.map((e) => ({ ...e, secrets: map[e.id] ?? [] })) }));
-        setSecretsReady(true);
-      })
-      .catch((e) => setSecretsError(`Couldn’t read secrets from the Keychain: ${e}`));
-  }, []);
-  useEffect(() => saveWorkspace(ws), [ws]);
-  useEffect(() => {
-    if (!secretsReady) return;
-    const next = secretsOf(ws);
-    const prev = savedSecrets.current;
-    savedSecrets.current = next;
-    saveSecrets(next, prev).catch((e) => setSecretsError(`Couldn’t save secrets to the Keychain: ${e}`));
-  }, [ws, secretsReady]);
   useEffect(() => localStorage.setItem("tether.split", String(split)), [split]);
+
+  // The workspace can be replaced underneath us (folder opened, files changed on disk).
+  useEffect(() => {
+    if (activeId && !findRequest(ws, activeId)) setActiveId(ws.collections.find((c) => c.requests.length)?.requests[0].id ?? null);
+  }, [ws, activeId]);
 
   const saved = activeId ? findRequest(ws, activeId) : undefined;
   const req = activeId ? drafts[activeId] ?? saved : undefined;
@@ -348,16 +332,28 @@ export default function App() {
             ))}
           </nav>
         )}
+        {canUseFolders && (
+          <div className="folder">
+            {folder ? (
+              <>
+                <span title={folder}>📁 {folder.split("/").pop()}</span>
+                <button className="link" onClick={openFolder}>Change</button>
+              </>
+            ) : (
+              <button className="link" onClick={openFolder} title="Save collections as files you can commit to Git">Save to folder…</button>
+            )}
+          </div>
+        )}
         <footer className="side-foot">
           <kbd>⌘K</kbd> Commands
         </footer>
       </aside>
 
       <main className="main">
-        {secretsError && (
-          <div className="banner" role="alert">
-            {secretsError}
-            <button className="icon" aria-label="Dismiss" onClick={() => setSecretsError(null)}>×</button>
+        {notice && (
+          <div className={`banner ${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}>
+            {notice.text}
+            <button className="icon" aria-label="Dismiss" onClick={() => setNotice(null)}>×</button>
           </div>
         )}
         <header className="topbar">
@@ -439,6 +435,8 @@ export default function App() {
             { label: "New collection", run: addCollection },
             ...(req ? [{ label: "Duplicate request", run: () => duplicate(req.id) }, { label: "Delete request…", run: () => removeRequest(req) }] : []),
             { label: "Edit environments", hint: "⌘E", run: () => setEnvOpen(true) },
+            ...(canUseFolders ? [{ label: folder ? "Open another workspace folder…" : "Save workspace to folder…", run: openFolder }] : []),
+            ...(folder ? [{ label: "Stop syncing with folder", run: closeFolder }] : []),
             ...ws.environments.map((e) => ({ label: `Switch environment: ${e.name}`, run: () => setWs((w) => ({ ...w, activeEnvId: e.id })) })),
             { label: "Clear history", run: () => setWs((w) => ({ ...w, history: [] })) },
             { label: "Reset to example workspace", run: () => { const d = demoWorkspace(); setWs(d); setDrafts({}); setActiveId(d.collections[0].requests[0].id); } },

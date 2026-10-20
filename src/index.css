@@ -277,3 +277,8 @@ code.val { background: var(--surface); border: 1px solid var(--line); display: i
 .dialog .modal-foot .primary { margin-left: 0; }
 
 .banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 6px 14px; background: var(--bad-soft); color: var(--bad); border-bottom: 1px solid var(--line); font-size: 12px; }
+.banner.info { background: var(--accent-soft); color: var(--accent); }
+.folder { display: flex; justify-content: space-between; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--navy-800); font-size: 12px; color: var(--navy-100); }
+.folder span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.link { color: #8fb3ff; padding: 0; font-size: 12px; }
+.link:hover { color: white; text-decoration: underline; }
