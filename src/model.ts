@@ -6,6 +6,8 @@ export type KV = { key: string; value: string; enabled: boolean };
 export type RequestDef = {
   id: string;
   name: string;
+  /** Human context, also shown to agents as the tool description. */
+  description?: string;
   method: Method;
   url: string;
   headers: KV[];
@@ -49,6 +51,8 @@ export type HistoryEntry = {
   at: number;
   /** Headers Tether sent, with credentials masked. */
   requestHeaders?: [string, string][];
+  /** Present when this was started through Agent access. */
+  agent?: { name: string; action: "read" | "write" };
   response?: HttpResponse;
   error?: SendError;
 };

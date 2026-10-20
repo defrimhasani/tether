@@ -1,6 +1,8 @@
 import { Bot, Check, Copy } from "lucide-react";
 import { useState } from "react";
 import type { McpStatus } from "./mcp";
+import { allRequests, type Workspace } from "../model";
+import { allowed, isWrite, setGrant, type AgentPolicy } from "./policy";
 
 export type AgentController = { available: boolean; enabled: boolean; setEnabled: (on: boolean) => void; status: McpStatus | null; error: string | null };
 
@@ -40,7 +42,7 @@ function CopyBlock({ text }: { text: string }) {
   );
 }
 
-export function AgentPanel({ agent, onClose }: { agent: AgentController; onClose: () => void }) {
+export function AgentPanel({ agent, ws, policy, setPolicy, activity, onClose }: { agent: AgentController; ws: Workspace; policy: AgentPolicy; setPolicy: (p: AgentPolicy) => void; activity: { at: number; agent: string; request: string; outcome: string }[]; onClose: () => void }) {
   const [tab, setTab] = useState("claude-code");
   const list = snippets(agent.status?.exe ?? "tether");
   const current = list.find((s) => s.id === tab) ?? list[0];
@@ -74,6 +76,29 @@ export function AgentPanel({ agent, onClose }: { agent: AgentController; onClose
               {agent.error && <p className="why" role="alert">{agent.error}</p>}
 
               <section>
+                <h3>Allowed requests</h3>
+                <p className="muted small">Only enabled requests and environments are visible to agents. Read requests run immediately; writes ask in Tether.</p>
+                <div className="grants">
+                  {allRequests(ws).map(({ request }) => (
+                    <div className="grant" key={request.id}>
+                      <code className={`m-${request.method}`}>{request.method}</code>
+                      <span>{request.name}</span>
+                      <select aria-label={`Environment for ${request.name}`} value="" onChange={(e) => { if (e.target.value) setPolicy(setGrant(policy, request.id, e.target.value, true)); e.currentTarget.value = ""; }}>
+                        <option value="">+ environment</option>
+                        {ws.environments.filter((env) => !allowed(policy, request, env.id)).map((env) => <option key={env.id} value={env.id}>{env.name}</option>)}
+                      </select>
+                      <span className="grant-envs">
+                        {policy.grants.find((g) => g.requestId === request.id)?.environments.map((id) => {
+                          const env = ws.environments.find((e) => e.id === id);
+                          return <button key={id} title={`Revoke ${env?.name ?? id}`} onClick={() => setPolicy(setGrant(policy, request.id, id, false))}>{env?.name ?? id} ×</button>;
+                        })}
+                      </span>
+                      {isWrite(request) && <span className="grant-write">asks first</span>}
+                    </div>
+                  ))}
+                </div>
+              </section>
+              <section>
                 <h3>Connect an agent</h3>
                 <p className="muted small">Agents start Tether's bridge as a command. It talks to this app, so it works only while Tether is open.</p>
                 <div className="seg" role="tablist">
@@ -81,6 +106,12 @@ export function AgentPanel({ agent, onClose }: { agent: AgentController; onClose
                 </div>
                 <p className="muted small hint">{current.hint}</p>
                 <CopyBlock text={current.text} />
+              </section>
+              <section>
+                <h3>Recent activity</h3>
+                <div className="activity">
+                  {activity.length ? activity.slice(0, 8).map((x, i) => <p key={i}><span className={x.outcome === "allowed" ? "ok" : "why"}>{x.outcome}</span> · {x.agent} · {x.request} <time>{new Date(x.at).toLocaleTimeString()}</time></p>) : <p className="muted small">No agent calls yet.</p>}
+                </div>
               </section>
             </>
           )}
