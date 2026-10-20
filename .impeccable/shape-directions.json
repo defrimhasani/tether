@@ -1,0 +1,106 @@
+{
+  "title": "A focused HTTP workbench for power users",
+  "question": "Choose the visual direction. Every option keeps familiar collections, request tabs, an editor, and response inspection; these are visual systems, not unusual controls.",
+  "options": [
+    {
+      "id": "assigned",
+      "label": "Chromatic notation",
+      "kicker": "THE ROLL",
+      "lineage": "Syntax-highlighting and technical annotation traditions",
+      "thesis": "Make the provenance of every reused value legible without leaving the request.",
+      "palette": ["#30283F", "#F4F2F8", "#FFFFFF", "#14756D", "#99621B"],
+      "materials": ["aubergine navigation", "lavender work surface", "crisp text and quiet rules"],
+      "viewport": "Collections left; environment and request tabs above; URL and Send over a request/response split; a selected response value reveals a compact source-to-use inspector.",
+      "risk": "Semantic colors must stay sparse and labeled or dense data becomes visually noisy.",
+      "raised": [
+        {"from": "Data-sublime field", "raise": "Use exact tabular alignment and stable widths throughout execution metadata."},
+        {"from": "Warm consumer surface", "raise": "Use plain-language empty states and comfortably sized primary controls."},
+        {"from": "Lexicon", "raise": "Maintain stable request context while inspecting deeply nested response fields."},
+        {"from": "Character catalog", "raise": "Give each request a consistent identity across collections, tabs, and history without mascots."},
+        {"from": "Airport wayfinding", "raise": "Always expose the next recovery action when a variable or execution fails."}
+      ]
+    },
+    {
+      "id": "model-pick",
+      "label": "Engineering reference",
+      "kicker": "IMPECCABLE’S PICK",
+      "lineage": "Well-edited engineering documentation and cross-reference indexes",
+      "thesis": "An exceptionally readable workbench where every value can lead back to its source.",
+      "palette": ["#193B52", "#EDF3F7", "#FFFFFF", "#176854", "#A04E26"],
+      "materials": ["navy navigation", "cool pale surfaces", "system sans and code monospace"],
+      "viewport": "Collections left, request editor center, response inspector right; source links open an inline provenance note without replacing the response.",
+      "risk": "Familiar and effective, but closest to where polished developer tools already land."
+    },
+    {
+      "id": "boarding",
+      "label": "Execution board",
+      "verdict": "competitive",
+      "lineage": "Live departure boards and segmented travel documents",
+      "thesis": "Make the latest execution and every changed result impossible to misread.",
+      "palette": ["#0B0D10", "#E6E8EB", "#FFFFFF", "#F6CE26"],
+      "materials": ["high-contrast panels", "tabular execution metadata", "persistent change markers"],
+      "viewport": "Standard collection sidebar and request/response panes, with a compact execution history whose changed fields stay marked until acknowledged.",
+      "case": "Matches product clarity through persistent change tracking, but has weaker identification with code-centric power users.",
+      "risk": "Execution history could compete with the editor if given too much space.",
+      "board": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board.webp",
+      "hero": "https://impeccable.style/worlds/cards/vernacular-ephemera-boarding-pass-and-gate-board-hero.webp"
+    },
+    {
+      "id": "data-field", "label": "Data-sublime field", "verdict": "declined",
+      "thesis": "A strictly black-and-white HTTP workbench at maximum numeric density.",
+      "palette": ["#000000", "#FFFFFF"], "materials": ["pixel-crisp rules", "tight monospace columns"],
+      "viewport": "Familiar request and response panes with precise numeric execution columns; selected fields isolate related values.",
+      "case": "Loses audience identification and product clarity: extreme contrast and density weaken long-session scanning.",
+      "kept": "Exact tabular alignment, not barcode ornament or strobing.",
+      "risk": "No color channel for errors, methods, or dependency roles."
+    },
+    {
+      "id": "consumer", "label": "Warm consumer surface", "verdict": "declined",
+      "thesis": "A friendly HTTP workbench with soft surfaces and plain-language feedback.",
+      "palette": ["#F3EEE8", "#FFFFFF", "#185FC5", "#252B33"], "materials": ["soft corners", "humanist sans"],
+      "viewport": "Standard editor panes use comfortable spacing and a single saturated action color; inline feedback explains failures.",
+      "case": "Loses audience identification and product clarity at power-user density: generous cards consume working space.",
+      "kept": "Clear language and comfortably sized primary actions.",
+      "risk": "Could feel introductory rather than expert."
+    },
+    {
+      "id": "lexicon", "label": "Lexicon shoulder", "verdict": "declined",
+      "thesis": "Treat nested response inspection as precise reference reading.",
+      "palette": ["#F4EEDD", "#151515", "#244E9B", "#A13535"], "materials": ["text-led hierarchy", "fixed reading measure"],
+      "viewport": "Familiar request and response panes retain response ancestry beside the selected field; technical data stays monospace.",
+      "case": "Loses audience identification and product clarity: long-form typographic grammar is less suitable for editable dense HTTP data.",
+      "kept": "Stable context while inspecting deeply nested fields.",
+      "risk": "Book-like text treatment can overpower the workbench."
+    },
+    {
+      "id": "catalog", "label": "Character catalog", "verdict": "declined",
+      "thesis": "Give saved requests a strong, consistent identity across the workspace.",
+      "palette": ["#E7E3F5", "#F6E1DE", "#DCEDE6", "#7150AB"], "materials": ["pastel grouping", "rounded humanist type"],
+      "viewport": "Standard collections and editor panes repeat a request’s identity in its tab and history entry; no mascot or ranked request grid.",
+      "case": "Loses audience identification and product clarity: playful differentiation competes with method and status semantics.",
+      "kept": "Stable identity across collection, tab, and history.",
+      "risk": "Unrelated color identities could fight syntax highlighting."
+    },
+    {
+      "id": "wayfinding", "label": "Airport wayfinding", "verdict": "declined",
+      "thesis": "Expose the next useful action when an HTTP workflow breaks.",
+      "palette": ["#F4CE24", "#181B1F", "#FFFFFF"], "materials": ["yellow navigation bands", "humanist sans"],
+      "viewport": "Standard collection sidebar and request/response split; unresolved values expose one clear source link and recovery action.",
+      "case": "Loses audience identification and product clarity: navigation emphasis competes with the request and response payloads.",
+      "kept": "Explicit next recovery action, not airport signs or arrows.",
+      "risk": "Large yellow regions can dominate a long editing session."
+    }
+  ],
+  "reroll": {"registers": ["safer", "bolder"]},
+  "steer": true,
+  "canon": true,
+  "canonCard": {
+    "label": "The category standard",
+    "thesis": "A familiar API client, executed with exceptional precision.",
+    "palette": ["#202329", "#F5F6F8", "#FFFFFF", "#3869CE"],
+    "materials": ["neutral panes", "conventional tab strip"],
+    "viewport": "Collection tree, URL bar, editor tabs, response pane, and collapsible history.",
+    "risk": "Intentionally less visually differentiated from existing API clients."
+  },
+  "buildPath": {"value": "code", "toggle": false}
+}
