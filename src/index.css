@@ -248,3 +248,30 @@ code.val { background: var(--surface); border: 1px solid var(--line); display: i
 .use-in select, .use-in input { border: 1px solid var(--line-strong); border-radius: var(--r); padding: 3px 6px; background: var(--panel); min-width: 0; }
 .use-in input { width: 140px; }
 .use-in .insp-actions { margin-top: 4px; }
+
+/* Collection management */
+.tree header { position: relative; }
+.tree header[draggable="true"], .req-row[draggable="true"] { cursor: grab; }
+.tree header .row-actions { display: flex; gap: 2px; opacity: 0; }
+.tree header:hover .row-actions, .tree header:focus-within .row-actions { opacity: 1; }
+.tree header .rename { flex: 1; font: inherit; text-transform: none; letter-spacing: 0; background: var(--navy-800); border: 1px solid var(--accent); border-radius: 4px; color: white; padding: 1px 4px; margin-right: 6px; }
+.req-row { position: relative; display: flex; align-items: center; }
+.req-row .req-item { flex: 1; min-width: 0; margin-right: 0; }
+.req-row .row-menu { position: absolute; right: 10px; opacity: 0; color: var(--navy-300); }
+.req-row:hover .row-menu, .req-row .row-menu:focus-visible, .req-row .row-menu[aria-expanded="true"] { opacity: 1; }
+.req-row .row-menu:hover { background: var(--navy-700); color: white; }
+.req-row:hover .dot { visibility: hidden; }
+.drop { box-shadow: inset 0 2px 0 #8fb3ff; }
+.tree header.drop { background: var(--navy-800); }
+.new-col { margin: 10px 14px 0; color: var(--navy-300); font-size: 12px; padding: 0; }
+.new-col:hover { color: white; }
+
+.menu { position: absolute; right: 8px; top: 100%; z-index: 5; min-width: 180px; background: var(--panel); color: var(--ink); border: 1px solid var(--line-strong); border-radius: 8px; padding: 4px; box-shadow: 0 10px 30px rgb(15 27 45 / 0.25); text-transform: none; letter-spacing: 0; font-size: 13px; }
+.menu button { display: flex; justify-content: space-between; width: 100%; text-align: left; padding: 5px 10px; border-radius: 5px; }
+.menu button:hover, .menu button:focus-visible { background: var(--accent-soft); outline: none; }
+
+.dialog { width: min(420px, 92vw); background: var(--panel); border-radius: 10px; padding: 18px 20px 16px; box-shadow: 0 20px 50px rgb(15 27 45 / 0.3); }
+.dialog h2 { font-size: 15px; margin: 0 0 8px; }
+.dialog p { margin: 0 0 6px; color: var(--ink-2); }
+.dialog .modal-foot { gap: 8px; justify-content: flex-end; }
+.dialog .modal-foot .primary { margin-left: 0; }

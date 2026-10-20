@@ -9,6 +9,7 @@ import {
 } from "./refs";
 import { cancel, send } from "./http";
 import { JsonTree } from "./JsonTree";
+import * as ops from "./workspace-ops";
 
 const STORE = "tether.workspace.v1";
 const SECRETS = "tether.secrets.v1";
@@ -34,6 +35,8 @@ function persist(ws: Workspace) {
 type Pending = { requestId: string; sendId: string };
 type Selection = { token: string; value: string; entryId: string };
 type Cursor = { field: Field; pos: number };
+type Confirm = { title: string; body: React.ReactNode; confirm: string; run: () => void };
+type Drag = { kind: "request" | "collection"; id: string };
 
 export default function App() {
   const [ws, setWs] = useState<Workspace>(load);
@@ -49,6 +52,11 @@ export default function App() {
   const [split, setSplit] = useState(() => Number(localStorage.getItem("tether.split")) || 0.5);
   const [selectedField, setSelectedField] = useState<Selection | null>(null);
   const cursors = useRef<Record<string, Cursor>>({});
+  const [confirm, setConfirm] = useState<Confirm | null>(null);
+  const [menu, setMenu] = useState<string | null>(null);
+  const [renamingCol, setRenamingCol] = useState<string | null>(null);
+  const [dropAt, setDropAt] = useState<string | null>(null);
+  const drag = useRef<Drag | null>(null);
   const recent = useRef<string[]>([]);
 
   useEffect(() => {
@@ -121,15 +129,87 @@ export default function App() {
     if (r) sendRequest(r);
   };
 
+  const open = (id: string) => { setActiveId(id); setViewing(null); setMenu(null); };
+
   const addRequest = (collectionId?: string) => {
-    const r: RequestDef = { id: uid(), name: "Untitled request", method: "GET", url: "", headers: [], body: "" };
-    setWs((w) => {
-      const cols = w.collections.length ? w.collections : [{ id: uid(), name: "My collection", requests: [] }];
-      const target = collectionId ?? cols[0].id;
-      return { ...w, collections: cols.map((c) => (c.id === target ? { ...c, requests: [...c.requests, r] } : c)) };
+    const [next, r] = ops.addRequest(ws, collectionId);
+    setWs(next);
+    open(r.id);
+  };
+
+  const addCollection = () => {
+    const [next, c] = ops.addCollection(ws);
+    setWs(next);
+    setRenamingCol(c.id);
+  };
+
+  const dropDraft = (ids: string[]) =>
+    setDrafts((d) => Object.fromEntries(Object.entries(d).filter(([id]) => !ids.includes(id))));
+
+  const duplicate = (id: string) => {
+    const res = ops.duplicateRequest(ws, id, drafts[id]);
+    if (!res) return;
+    setWs(res[0]);
+    open(res[1].id);
+  };
+
+  const removeRequest = (r: RequestDef) => {
+    const deps = ops.dependents(ws, r);
+    setMenu(null);
+    setConfirm({
+      title: `Delete “${r.name}”?`,
+      body: (
+        <>
+          <p>Its history is deleted too. This can’t be undone.</p>
+          {deps.length > 0 && <p className="why">References in {deps.map((d) => d.name).join(", ")} will stop resolving.</p>}
+        </>
+      ),
+      confirm: "Delete request",
+      run: () => {
+        setWs((w) => ops.deleteRequest(w, r.id));
+        dropDraft([r.id]);
+        if (activeId === r.id) setActiveId(null);
+      },
     });
-    setActiveId(r.id);
-    setViewing(null);
+  };
+
+  const removeCollection = (id: string) => {
+    const c = ws.collections.find((c) => c.id === id);
+    if (!c) return;
+    setMenu(null);
+    setConfirm({
+      title: `Delete “${c.name}”?`,
+      body: <p>{c.requests.length ? `Its ${c.requests.length} request${c.requests.length > 1 ? "s" : ""} and their history are deleted too.` : "The collection is empty."} This can’t be undone.</p>,
+      confirm: "Delete collection",
+      run: () => {
+        const ids = c.requests.map((r) => r.id);
+        setWs((w) => ops.deleteCollection(w, id));
+        dropDraft(ids);
+        if (activeId && ids.includes(activeId)) setActiveId(null);
+      },
+    });
+  };
+
+  const onDrop = (toCollection: string, index: number) => {
+    const d = drag.current;
+    drag.current = null;
+    setDropAt(null);
+    if (!d) return;
+    if (d.kind === "request") {
+      const from = ws.collections.find((c) => c.requests.some((r) => r.id === d.id));
+      const cur = from?.requests.findIndex((r) => r.id === d.id) ?? -1;
+      // Index is computed before removal; adjust when moving down within the same collection.
+      setWs((w) => ops.moveRequest(w, d.id, toCollection, from?.id === toCollection && cur < index ? index - 1 : index));
+    } else {
+      setWs((w) => ops.moveCollection(w, d.id, w.collections.findIndex((c) => c.id === toCollection)));
+    }
+  };
+
+  const nudge = (id: string, delta: number) => {
+    const c = ws.collections.find((c) => c.requests.some((r) => r.id === id));
+    if (!c) return;
+    const i = c.requests.findIndex((r) => r.id === id);
+    setWs((w) => ops.moveRequest(w, id, c.id, i + delta));
   };
 
   const useInRequest = (targetId: string, token: string, target: InsertTarget) => {
@@ -151,6 +231,7 @@ export default function App() {
       else if (e.key === "k" || e.key === "p") { e.preventDefault(); setPalette((p) => !p); }
       else if (e.key === "n") { e.preventDefault(); addRequest(); }
       else if (e.key === "e") { e.preventDefault(); setEnvOpen(true); }
+      else if (e.altKey && activeId && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); nudge(activeId, e.key === "ArrowUp" ? -1 : 1); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -180,23 +261,79 @@ export default function App() {
               )}
               {ws.collections.map((c) => {
                 const items = c.requests.filter((r) => !q || r.name.toLowerCase().includes(q) || r.url.toLowerCase().includes(q));
+                if (q && !items.length) return null;
+                const dragProps = (key: string, index: number) => ({
+                  onDragOver: (e: React.DragEvent) => { if (drag.current && (drag.current.kind === "request" || key === `c:${c.id}`)) { e.preventDefault(); setDropAt(key); } },
+                  onDragLeave: () => setDropAt((k) => (k === key ? null : k)),
+                  onDrop: (e: React.DragEvent) => { e.preventDefault(); onDrop(c.id, index); },
+                });
                 return (
                   <section key={c.id}>
-                    <header>
-                      <span>{c.name}</span>
-                      <button className="icon" title="New request in collection" aria-label={`New request in ${c.name}`} onClick={() => addRequest(c.id)}>+</button>
+                    <header
+                      className={dropAt === `c:${c.id}` ? "drop" : ""}
+                      draggable={!q && renamingCol !== c.id}
+                      onDragStart={() => (drag.current = { kind: "collection", id: c.id })}
+                      onDragEnd={() => { drag.current = null; setDropAt(null); }}
+                      {...dragProps(`c:${c.id}`, c.requests.length)}
+                    >
+                      {renamingCol === c.id ? (
+                        <input
+                          className="rename" autoFocus defaultValue={c.name} aria-label="Collection name"
+                          onFocus={(e) => e.target.select()}
+                          onBlur={(e) => { setWs((w) => ops.renameCollection(w, c.id, e.target.value)); setRenamingCol(null); }}
+                          onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setRenamingCol(null); }}
+                        />
+                      ) : (
+                        <span onDoubleClick={() => setRenamingCol(c.id)}>{c.name}</span>
+                      )}
+                      <span className="row-actions">
+                        <button className="icon" title="New request in collection" aria-label={`New request in ${c.name}`} onClick={() => addRequest(c.id)}>+</button>
+                        <button className="icon" aria-label={`${c.name} actions`} aria-expanded={menu === c.id} onClick={() => setMenu(menu === c.id ? null : c.id)}>⋯</button>
+                      </span>
+                      {menu === c.id && (
+                        <Menu onClose={() => setMenu(null)} items={[
+                          { label: "Rename", run: () => setRenamingCol(c.id) },
+                          { label: "New request", run: () => addRequest(c.id) },
+                          { label: "Delete…", danger: true, run: () => removeCollection(c.id) },
+                        ]} />
+                      )}
                     </header>
-                    {items.length === 0 && <p className="muted small pad">{q ? "No matches." : "Empty collection."}</p>}
+                    {items.length === 0 && <p className="muted small pad" {...dragProps(`c:${c.id}`, 0)}>Empty collection.</p>}
                     {items.map((r) => (
-                      <button key={r.id} className="req-item" aria-current={r.id === activeId} onClick={() => { setActiveId(r.id); setViewing(null); }}>
-                        <span className={`m m-${r.method}`}>{r.method === "DELETE" ? "DEL" : r.method === "OPTIONS" ? "OPT" : r.method}</span>
-                        <span className="name">{r.name}</span>
-                        {drafts[r.id] && <span className="dot" title="Unsaved changes" aria-label="Unsaved" />}
-                      </button>
+                      <div
+                        key={r.id}
+                        className={`req-row ${dropAt === r.id ? "drop" : ""}`}
+                        draggable={!q}
+                        onDragStart={() => (drag.current = { kind: "request", id: r.id })}
+                        onDragEnd={() => { drag.current = null; setDropAt(null); }}
+                        {...dragProps(r.id, c.requests.indexOf(r))}
+                      >
+                        <button className="req-item" aria-current={r.id === activeId} onClick={() => open(r.id)}
+                          onContextMenu={(e) => { e.preventDefault(); setMenu(r.id); }}>
+                          <span className={`m m-${r.method}`}>{r.method === "DELETE" ? "DEL" : r.method === "OPTIONS" ? "OPT" : r.method}</span>
+                          <span className="name">{(drafts[r.id] ?? r).name}</span>
+                          {drafts[r.id] && <span className="dot" title="Unsaved changes" aria-label="Unsaved" />}
+                        </button>
+                        <button className="icon row-menu" aria-label={`${r.name} actions`} aria-expanded={menu === r.id} onClick={() => setMenu(menu === r.id ? null : r.id)}>⋯</button>
+                        {menu === r.id && (
+                          <Menu onClose={() => setMenu(null)} items={[
+                            { label: "Rename", run: () => { open(r.id); setTimeout(() => document.querySelector<HTMLInputElement>(".title")?.select()); } },
+                            { label: "Duplicate", run: () => duplicate(r.id) },
+                            { label: "Move up", hint: "⌥⌘↑", run: () => nudge(r.id, -1) },
+                            { label: "Move down", hint: "⌥⌘↓", run: () => nudge(r.id, 1) },
+                            ...ws.collections.filter((x) => x.id !== c.id).map((x) => ({ label: `Move to ${x.name}`, run: () => setWs((w) => ops.moveRequest(w, r.id, x.id, Infinity)) })),
+                            { label: "Delete…", danger: true, run: () => removeRequest(drafts[r.id] ?? r) },
+                          ]} />
+                        )}
+                      </div>
                     ))}
                   </section>
                 );
               })}
+              {q && !ws.collections.some((c) => c.requests.some((r) => r.name.toLowerCase().includes(q) || r.url.toLowerCase().includes(q))) && (
+                <p className="muted small pad">No requests match “{filter}”.</p>
+              )}
+              {!q && <button className="new-col" onClick={addCollection}>+ New collection</button>}
             </nav>
           </>
         ) : (
@@ -293,6 +430,8 @@ export default function App() {
           onPick={(id) => { setActiveId(id); setViewing(null); setPalette(false); }}
           actions={[
             { label: "New request", hint: "⌘N", run: () => addRequest() },
+            { label: "New collection", run: addCollection },
+            ...(req ? [{ label: "Duplicate request", run: () => duplicate(req.id) }, { label: "Delete request…", run: () => removeRequest(req) }] : []),
             { label: "Edit environments", hint: "⌘E", run: () => setEnvOpen(true) },
             ...ws.environments.map((e) => ({ label: `Switch environment: ${e.name}`, run: () => setWs((w) => ({ ...w, activeEnvId: e.id })) })),
             { label: "Clear history", run: () => setWs((w) => ({ ...w, history: [] })) },
@@ -300,7 +439,49 @@ export default function App() {
           ]}
         />
       )}
+      {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
       {envOpen && <EnvEditor ws={ws} setWs={setWs} onClose={() => setEnvOpen(false)} />}
+    </div>
+  );
+}
+
+function Menu({ items, onClose }: { items: { label: string; hint?: string; danger?: boolean; run: () => void }[]; onClose: () => void }) {
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    ref.current?.querySelector("button")?.focus();
+    const away = (e: MouseEvent) => !ref.current?.contains(e.target as Node) && onClose();
+    window.addEventListener("mousedown", away);
+    return () => window.removeEventListener("mousedown", away);
+  }, [onClose]);
+  const move = (e: React.KeyboardEvent) => {
+    const btns = [...(ref.current?.querySelectorAll("button") ?? [])];
+    const i = btns.indexOf(document.activeElement as HTMLButtonElement);
+    if (e.key === "ArrowDown") { e.preventDefault(); btns[(i + 1) % btns.length]?.focus(); }
+    if (e.key === "ArrowUp") { e.preventDefault(); btns[(i - 1 + btns.length) % btns.length]?.focus(); }
+    if (e.key === "Escape") onClose();
+  };
+  return (
+    <div className="menu" role="menu" ref={ref} onKeyDown={move}>
+      {items.map((it) => (
+        <button key={it.label} role="menuitem" className={it.danger ? "danger-text" : ""} onClick={() => { onClose(); it.run(); }}>
+          {it.label}{it.hint && <kbd>{it.hint}</kbd>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function ConfirmDialog({ title, body, confirm, run, onClose }: Confirm & { onClose: () => void }) {
+  return (
+    <div className="overlay" onMouseDown={onClose} onKeyDown={(e) => e.key === "Escape" && onClose()}>
+      <div className="dialog" role="alertdialog" aria-label={title} onMouseDown={(e) => e.stopPropagation()}>
+        <h2>{title}</h2>
+        {body}
+        <div className="modal-foot">
+          <button className="ghost" onClick={onClose} autoFocus>Cancel</button>
+          <button className="primary danger" onClick={() => { run(); onClose(); }}>{confirm}</button>
+        </div>
+      </div>
     </div>
   );
 }
