@@ -27,7 +27,11 @@ struct SendResponse {
 }
 
 #[derive(Debug, Serialize)]
-#[serde(tag = "kind", rename_all = "camelCase", rename_all_fields = "camelCase")]
+#[serde(
+  tag = "kind",
+  rename_all = "camelCase",
+  rename_all_fields = "camelCase"
+)]
 enum SendError {
   Cancelled,
   Timeout { after_ms: u64 },
@@ -50,7 +54,9 @@ async fn send_request(
     .timeout(Duration::from_millis(timeout_ms))
     .user_agent("Tether/0.1")
     .build()
-    .map_err(|e| SendError::Connection { message: e.to_string() })?;
+    .map_err(|e| SendError::Connection {
+      message: e.to_string(),
+    })?;
 
   let mut builder = client.request(method, url);
   for (k, v) in req.headers.iter().filter(|(k, _)| !k.trim().is_empty()) {
@@ -61,7 +67,11 @@ async fn send_request(
   }
 
   let token = CancellationToken::new();
-  state.0.lock().unwrap().insert(req.id.clone(), token.clone());
+  state
+    .0
+    .lock()
+    .unwrap()
+    .insert(req.id.clone(), token.clone());
   let started = Instant::now();
 
   let work = async {
@@ -70,7 +80,12 @@ async fn send_request(
     let headers = res
       .headers()
       .iter()
-      .map(|(k, v)| (k.to_string(), String::from_utf8_lossy(v.as_bytes()).into_owned()))
+      .map(|(k, v)| {
+        (
+          k.to_string(),
+          String::from_utf8_lossy(v.as_bytes()).into_owned(),
+        )
+      })
       .collect();
     let bytes = res.bytes().await?;
     Ok::<_, reqwest::Error>(SendResponse {
@@ -95,11 +110,18 @@ async fn send_request(
 }
 
 fn parse_target(method: &str, url: &str) -> Result<(reqwest::Method, reqwest::Url), SendError> {
-  let method = reqwest::Method::from_bytes(method.to_uppercase().as_bytes())
-    .map_err(|_| SendError::Invalid { message: format!("Unknown method “{method}”") })?;
-  let url = reqwest::Url::parse(url).map_err(|e| SendError::Invalid { message: format!("Invalid URL: {e}") })?;
+  let method = reqwest::Method::from_bytes(method.to_uppercase().as_bytes()).map_err(|_| {
+    SendError::Invalid {
+      message: format!("Unknown method “{method}”"),
+    }
+  })?;
+  let url = reqwest::Url::parse(url).map_err(|e| SendError::Invalid {
+    message: format!("Invalid URL: {e}"),
+  })?;
   if !matches!(url.scheme(), "http" | "https") {
-    return Err(SendError::Invalid { message: format!("Unsupported scheme “{}”; use http or https", url.scheme()) });
+    return Err(SendError::Invalid {
+      message: format!("Unsupported scheme “{}”; use http or https", url.scheme()),
+    });
   }
   Ok((method, url))
 }
@@ -151,9 +173,18 @@ mod tests {
 
   #[test]
   fn rejects_invalid_targets() {
-    assert!(matches!(parse_target("GET", "not a url"), Err(SendError::Invalid { .. })));
-    assert!(matches!(parse_target("GET", "file:///etc/hosts"), Err(SendError::Invalid { .. })));
-    assert!(matches!(parse_target("BAD METHOD", "https://x.dev"), Err(SendError::Invalid { .. })));
+    assert!(matches!(
+      parse_target("GET", "not a url"),
+      Err(SendError::Invalid { .. })
+    ));
+    assert!(matches!(
+      parse_target("GET", "file:///etc/hosts"),
+      Err(SendError::Invalid { .. })
+    ));
+    assert!(matches!(
+      parse_target("BAD METHOD", "https://x.dev"),
+      Err(SendError::Invalid { .. })
+    ));
   }
 
   #[test]
@@ -161,10 +192,14 @@ mod tests {
     #[derive(Debug)]
     struct Outer(std::io::Error);
     impl std::fmt::Display for Outer {
-      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result { write!(f, "outer") }
+      fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "outer")
+      }
     }
     impl std::error::Error for Outer {
-      fn source(&self) -> Option<&(dyn std::error::Error + 'static)> { Some(&self.0) }
+      fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        Some(&self.0)
+      }
     }
     let e = Outer(std::io::Error::other("connection refused"));
     assert_eq!(root_cause(&e), "connection refused");

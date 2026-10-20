@@ -64,7 +64,7 @@ export default function App() {
       ...w,
       collections: w.collections.map((c) => ({ ...c, requests: c.requests.map((r) => (r.id === draft.id ? draft : r)) })),
     }));
-    setDrafts(({ [activeId]: _, ...rest }) => rest);
+    setDrafts((d) => { const next = { ...d }; delete next[activeId]; return next; });
   }, [activeId, drafts]);
 
   const sendRequest = useCallback(
