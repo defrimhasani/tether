@@ -39,6 +39,8 @@ export type HistoryEntry = {
   method: Method;
   url: string;
   at: number;
+  /** Headers Tether sent, with credentials masked. */
+  requestHeaders?: [string, string][];
   response?: HttpResponse;
   error?: SendError;
 };
