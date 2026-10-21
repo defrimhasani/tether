@@ -1,8 +1,9 @@
 import { FileUp, TriangleAlert } from "lucide-react";
 import { useMemo, useRef, useState } from "react";
+import { designTitle, parseSpec, stringifySpec } from "./design";
 import { describe, detectAndParse, type ImportResult } from "./importers";
 
-export function ImportDialog({ initialText = "", onImport, onClose }: { initialText?: string; onImport: (r: ImportResult) => void; onClose: () => void }) {
+export function ImportDialog({ initialText = "", onImport, onDesign, onClose }: { initialText?: string; onImport: (r: ImportResult) => void; onDesign?: (spec: string, name: string) => void; onClose: () => void }) {
   const [text, setText] = useState(initialText);
   const [file, setFile] = useState<string | null>(null);
   const [over, setOver] = useState(false);
@@ -51,6 +52,9 @@ export function ImportDialog({ initialText = "", onImport, onClose }: { initialT
           <button type="button" className="ghost small" onClick={() => picker.current?.click()}><FileUp size={13} /> Choose file…</button>
           <span className="spacer" />
           <button type="button" className="ghost" onClick={onClose}>Cancel</button>
+          {good && onDesign && good.source.startsWith("OpenAPI") && (
+            <button type="button" className="ghost" onClick={() => { const spec = stringifySpec(parseSpec(text).doc); onDesign(spec, designTitle(spec)); }} title="Edit this spec in the API designer instead of creating requests">Open as design</button>
+          )}
           <button type="submit" className="primary" disabled={!good}>Import</button>
         </div>
       </form>

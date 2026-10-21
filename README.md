@@ -35,6 +35,14 @@ The [Release workflow](.github/workflows/release.yml) builds macOS (universal), 
 
 Click any response field → **Use in request** or **Copy reference**. Unresolved references block sending and offer a fix.
 
+## API designer
+
+The **Design** tab in the sidebar edits OpenAPI 3 documents: add endpoints, parameters, request and response bodies and reusable schemas in a form, with the YAML kept in sync beside it (edit either side). Problems such as undeclared path parameters or unknown schemas are listed as you type.
+
+- **Generate requests** creates a collection plus `(server)` and `(mock)` environments; run it again later to add requests for new endpoints.
+- **Mock server** (desktop app) serves example responses from the design on `127.0.0.1` (default port 4010) with CORS enabled, and restarts as you edit. **Use in requests** switches to the mock environment.
+- Designs are saved in the workspace folder as `designs/<name>.yaml`. Import a spec with ⇧⌘I and choose **Open as design**.
+
 ## Shortcuts
 
 ⌘↵ send · ⌘. cancel · ⌘S save · ⌘K command palette · ⌘N new request · ⌘E environments

@@ -1,5 +1,6 @@
 mod bridge;
 mod mcp;
+mod mock;
 mod secrets;
 mod workspace;
 
@@ -211,6 +212,7 @@ pub fn run() {
     .plugin(tauri_plugin_dialog::init())
     .manage(InFlight::default())
     .manage(mcp::McpState::default())
+    .manage(mock::MockState::default())
     .invoke_handler(tauri::generate_handler![
       send_request,
       cancel_request,
@@ -224,7 +226,10 @@ pub fn run() {
       mcp::mcp_status,
       mcp::mcp_respond,
       mcp::agent_autostart,
-      mcp::agent_debug_grant
+      mcp::agent_debug_grant,
+      mock::mock_start,
+      mock::mock_stop,
+      mock::mock_status
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {
@@ -242,6 +247,7 @@ pub fn run() {
       if let tauri::RunEvent::Exit = event {
         use tauri::Manager;
         mcp::shutdown(&app.state::<mcp::McpState>());
+        mock::shutdown(&app.state::<mock::MockState>());
       }
     });
 }

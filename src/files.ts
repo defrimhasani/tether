@@ -1,5 +1,5 @@
 import { compactEntry } from "./body";
-import { METHODS, slug, type Collection, type Environment, type HistoryEntry, type KV, type Method, type RequestDef, type Workspace } from "./model";
+import { METHODS, slug, type ApiDesign, type Collection, type Environment, type HistoryEntry, type KV, type Method, type RequestDef, type Workspace } from "./model";
 
 /**
  * On-disk workspace layout (all JSON, 2-space indented, stable key order):
@@ -8,6 +8,7 @@ import { METHODS, slug, type Collection, type Environment, type HistoryEntry, ty
  *   collections/<dir>/collection.json    { id, name, requests: [file…] }
  *   collections/<dir>/<file>.json        { id, name, method, url, headers, body }
  *   environments/<file>.json             { id, name, vars }        (secrets live in the Keychain)
+ *   designs/<file>.yaml                  an OpenAPI document; tether.json lists { id, file, name, collectionId }
  *   .tether/state.json                   { activeEnvId }           (git-ignored)
  *   .tether/history.json                 [HistoryEntry…]           (git-ignored)
  *
@@ -51,7 +52,14 @@ export function toFiles(ws: Workspace): Files {
     }
     files[`collections/${dir}/collection.json`] = json({ id: c.id, name: c.name, requests: reqFiles });
   }
-  files["tether.json"] = json({ version: VERSION, collections: order });
+  const designs: { id: string; file: string; name: string; collectionId?: string }[] = [];
+  const designFiles = new Set<string>();
+  for (const d of ws.designs ?? []) {
+    const file = `${uniqueIn(designFiles, slug(d.name).replace(/_/g, "-"))}.yaml`;
+    files[`designs/${file}`] = d.spec.endsWith("\n") ? d.spec : `${d.spec}\n`;
+    designs.push({ id: d.id, file, name: d.name, ...(d.collectionId ? { collectionId: d.collectionId } : {}) });
+  }
+  files["tether.json"] = json({ version: VERSION, collections: order, ...(designs.length ? { designs } : {}) });
 
   const envNames = new Set<string>();
   for (const e of ws.environments)
@@ -139,6 +147,24 @@ export function fromFiles(files: Files): LoadResult {
       return [{ id: freshId(e.id, path), name: str(e.name, path.slice(13, -5)), vars: kvIn(e.vars), secrets: [] }];
     });
 
+  const designList = isObj(root) && Array.isArray(root.designs) ? root.designs.filter(isObj) : [];
+  const designPaths = Object.keys(files).filter((p) => /^designs\/[^/]+\.(ya?ml|json)$/.test(p)).sort();
+  const designs: ApiDesign[] = [];
+  const claimed = new Set<string>();
+  for (const meta of designList) {
+    const path = `designs/${str(meta.file)}`;
+    if (!(path in files) || claimed.has(path)) continue;
+    claimed.add(path);
+    designs.push({
+      id: freshId(meta.id, path), name: str(meta.name, str(meta.file).replace(/\.[^.]+$/, "")), spec: files[path],
+      ...(str(meta.collectionId) && collections.some((c) => c.id === meta.collectionId) ? { collectionId: str(meta.collectionId) } : {}),
+    });
+  }
+  // Specs added outside the app (a teammate, or copied in by hand) show up too.
+  for (const path of designPaths.filter((p) => !claimed.has(p))) {
+    designs.push({ id: freshId(undefined, path), name: path.slice(8).replace(/\.[^.]+$/, ""), spec: files[path] });
+  }
+
   const state = ".tether/state.json" in files ? parse(".tether/state.json") : undefined;
   const wanted = isObj(state) ? str(state.activeEnvId) : "";
   const history = ".tether/history.json" in files ? parse(".tether/history.json") : [];
@@ -146,6 +172,7 @@ export function fromFiles(files: Files): LoadResult {
   return {
     workspace: {
       collections,
+      ...(designs.length ? { designs } : {}),
       environments,
       activeEnvId: environments.some((e) => e.id === wanted) ? wanted : environments[0]?.id ?? null,
       history: Array.isArray(history) ? (history as HistoryEntry[]) : [],

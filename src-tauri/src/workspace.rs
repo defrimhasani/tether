@@ -1,7 +1,7 @@
 //! Reads and writes a workspace folder as plain files.
 //!
 //! The frontend decides the layout and content; this module only reads managed files and
-//! applies a full snapshot: writing changed files and removing stale managed `.json` files.
+//! applies a full snapshot: writing changed files and removing stale managed files.
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -12,6 +12,7 @@ const MANAGED: &[&str] = &[
   "tether.json",
   "collections",
   "environments",
+  "designs",
   ".tether",
   ".gitignore",
 ];
@@ -34,12 +35,18 @@ fn check_rel(rel: &str) -> Result<PathBuf, String> {
   }
 }
 
+/// Workspace data is JSON; API designs under `designs/` are OpenAPI documents (YAML or JSON).
+fn is_managed_file(path: &Path) -> bool {
+  let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+  ext == "json" || ext == "yaml" || ext == "yml"
+}
+
 fn collect(root: &Path, dir: &Path, out: &mut BTreeMap<String, String>) -> Result<(), String> {
   for entry in fs::read_dir(dir).map_err(|e| e.to_string())? {
     let path = entry.map_err(|e| e.to_string())?.path();
     if path.is_dir() {
       collect(root, &path, out)?;
-    } else if path.extension().is_some_and(|e| e == "json") {
+    } else if is_managed_file(&path) {
       let rel = path
         .strip_prefix(root)
         .unwrap()
@@ -61,7 +68,7 @@ pub fn read(root: &Path) -> Result<BTreeMap<String, String>, String> {
     let p = root.join(name);
     if p.is_dir() {
       collect(root, &p, &mut out)?;
-    } else if p.is_file() && p.extension().is_some_and(|e| e == "json") {
+    } else if p.is_file() && is_managed_file(&p) {
       out.insert(
         (*name).to_string(),
         fs::read_to_string(&p).map_err(|e| e.to_string())?,
@@ -87,7 +94,7 @@ pub fn write(root: &Path, files: &BTreeMap<String, String>) -> Result<(), String
       fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
     // Write to a temp file and rename, so a crash never leaves a half-written file.
-    let tmp = path.with_extension("json.tmp");
+    let tmp = path.with_extension("tmp");
     fs::write(&tmp, contents).map_err(|e| format!("{}: {e}", path.display()))?;
     fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
   }
@@ -189,6 +196,30 @@ mod tests {
       fs::read_to_string(root.join("README.md")).unwrap(),
       "mine",
       "unmanaged files untouched"
+    );
+    fs::remove_dir_all(root).unwrap();
+  }
+
+  #[test]
+  fn round_trips_api_designs_as_yaml() {
+    let root = tmp();
+    let a = map(&[
+      ("tether.json", "{}"),
+      ("designs/pets.yaml", "openapi: 3.0.3\n"),
+      ("designs/old.yml", "x: 1\n"),
+    ]);
+    write(&root, &a).unwrap();
+    assert_eq!(read(&root).unwrap(), a);
+    assert!(check_rel("designs/pets.yaml").is_ok());
+    let b = map(&[
+      ("tether.json", "{}"),
+      ("designs/pets.yaml", "openapi: 3.1.0\n"),
+    ]);
+    write(&root, &b).unwrap();
+    assert_eq!(
+      read(&root).unwrap(),
+      b,
+      "stale design removed, edit applied"
     );
     fs::remove_dir_all(root).unwrap();
   }

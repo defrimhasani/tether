@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   METHODS, allRequests, demoWorkspace, findRequest, formatBytes, slug, uid,
-  type HistoryEntry, type KV, type Method, type RequestDef, type SendError, type Workspace,
+  type ApiDesign, type HistoryEntry, type KV, type Method, type RequestDef, type SendError, type Workspace,
 } from "./model";
 import {
   TOKEN, downstreamUses, insertReference, interpolate, renameReferences, resolveToken, suggestTarget, tokensIn, uniqueName,
@@ -13,7 +13,7 @@ import { Scenery } from "./Scenery";
 import { BodyEditor } from "./BodyEditor";
 import { maskHeader } from "./markup";
 import {
-  ArrowUp, Bot, Command, Ellipsis, FileDown, Folder, FolderPlus, Layers, Plus, Search, Settings as SettingsIcon, SlidersHorizontal, Square, SquarePen, X,
+  ArrowUp, Bot, Command, Ellipsis, FileDown, PencilRuler, Folder, FolderPlus, Layers, Plus, Search, Settings as SettingsIcon, SlidersHorizontal, Square, SquarePen, X,
 } from "lucide-react";
 import * as ops from "./workspace-ops";
 import { useWorkspace } from "./useWorkspace";
@@ -25,6 +25,8 @@ import { useSettings } from "./settings";
 import { modKey } from "./platform";
 import { RocketGame } from "./RocketGame";
 import { ImportDialog } from "./ImportDialog";
+import { Designer } from "./Designer";
+import { blankSpec, designTitle, exampleSpec, generateRequests, listOperations, newDesign, parseSpec } from "./design";
 import { describe as describeImport, mergeImport, type ImportResult } from "./importers";
 import { looksLikeCurl, parseCurl, toCurl } from "./curl";
 import { EMPTY_POLICY, allowed as agentAllowed, dependencies as agentDependencies, inputsFor, isWrite, toolName, type AgentPolicy } from "./agent/policy";
@@ -62,7 +64,8 @@ export default function App() {
   const agentSessionAllows = useRef(new Set<string>());
   const agent = useAgent(handleAgent);
   const [narrowView, setNarrowView] = useState<"request" | "response">("request");
-  const [sidebarTab, setSidebarTab] = useState<"collections" | "history">("collections");
+  const [sidebarTab, setSidebarTab] = useState<"collections" | "history" | "design">("collections");
+  const [designId, setDesignId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [split, setSplit] = useState(() => Number(localStorage.getItem("tether.split")) || 0.5);
   const [selectedField, setSelectedField] = useState<Selection | null>(null);
@@ -312,6 +315,52 @@ export default function App() {
     });
   };
 
+
+  const designs = ws.designs ?? [];
+  const design = designs.find((d) => d.id === designId) ?? designs[0];
+  const createDesign = (spec: string, name = designTitle(spec)) => {
+    const d = newDesign(name, spec);
+    setWs((w) => ({ ...w, designs: [...(w.designs ?? []), d] }));
+    setDesignId(d.id);
+    setSidebarTab("design");
+  };
+  const patchDesign = (id: string, patch: Partial<ApiDesign>) =>
+    setWs((w) => ({ ...w, designs: (w.designs ?? []).map((d) => (d.id === id ? { ...d, ...patch } : d)) }));
+  const removeDesign = (d: ApiDesign) =>
+    setConfirm({
+      title: `Delete “${d.name}”?`,
+      body: <p>The design is removed from this workspace. Requests generated from it are kept.</p>,
+      confirm: "Delete",
+      run: () => { setWs((w) => ({ ...w, designs: (w.designs ?? []).filter((x) => x.id !== d.id) })); setDesignId(null); },
+    });
+  const generateFromDesign = (d: ApiDesign, mockBase: string) => {
+    try {
+      const out = generateRequests(ws, d, mockBase);
+      setWs({ ...out.ws, designs: designs.map((x) => (x.id === d.id ? { ...x, collectionId: out.collectionId } : x)) });
+      setNotice({
+        tone: "info",
+        text: out.added
+          ? `Added ${out.added} request${out.added === 1 ? "" : "s"} to “${out.ws.collections.find((c) => c.id === out.collectionId)?.name}”.${out.environments.length ? ` New environments: ${out.environments.join(", ")}.` : ""}`
+          : "Requests are already up to date with this design.",
+      });
+      if (out.added) setSidebarTab("collections");
+    } catch (e) { setNotice({ tone: "error", text: `Couldn’t generate requests: ${(e as Error).message}` }); }
+  };
+  const useMockEnvironment = (d: ApiDesign, base: string) => {
+    const title = designTitle(d.spec, d.name);
+    const name = `${title} (mock)`;
+    const server = (() => { try { return new URL(String((parseSpec(d.spec).doc.servers as { url?: string }[] | undefined)?.[0]?.url ?? "")).pathname.replace(/\/$/, ""); } catch { return ""; } })();
+    const url = `${base}${server}`;
+    setWs((w) => {
+      const existing = w.environments.find((e) => e.name === name);
+      const env = existing
+        ? { ...existing, vars: existing.vars.some((v) => v.key === "base_url") ? existing.vars.map((v) => (v.key === "base_url" ? { ...v, value: url } : v)) : [...existing.vars, { key: "base_url", value: url, enabled: true }] }
+        : { id: uid(), name, vars: [{ key: "base_url", value: url, enabled: true }], secrets: [] };
+      return { ...w, environments: existing ? w.environments.map((e) => (e.id === env.id ? env : e)) : [...w.environments, env], activeEnvId: env.id };
+    });
+    setNotice({ tone: "info", text: `Requests now use ${url} through the “${name}” environment.` });
+  };
+
   const addRequest = (collectionId?: string) => {
     const [next, r] = ops.addRequest(ws, collectionId);
     setWs(next);
@@ -445,6 +494,7 @@ export default function App() {
         <div className="seg" role="tablist">
           <button role="tab" aria-selected={sidebarTab === "collections"} onClick={() => setSidebarTab("collections")}>Collections</button>
           <button role="tab" aria-selected={sidebarTab === "history"} onClick={() => setSidebarTab("history")}>History</button>
+          <button role="tab" aria-selected={sidebarTab === "design"} onClick={() => setSidebarTab("design")}>Design</button>
         </div>
         {sidebarTab === "collections" ? (
           <>
@@ -540,6 +590,31 @@ export default function App() {
               )}
             </nav>
           </>
+        ) : sidebarTab === "design" ? (
+          <nav className="tree designs">
+            {designs.length === 0 && <p className="muted small pad">Design an API before you build it: endpoints, schemas and a mock server.</p>}
+            {designs.map((d) => {
+              const n = listOperations(parseSpec(d.spec).doc).length;
+              return (
+                <div key={d.id} className="req-row">
+                  <button className="req-item" aria-current={d.id === design?.id} onClick={() => setDesignId(d.id)}>
+                    <PencilRuler size={13} aria-hidden className="design-ico" />
+                    <span className="name">{d.name}<small>{n} endpoint{n === 1 ? "" : "s"}</small></span>
+                  </button>
+                  <button className="icon row-menu" aria-label={`${d.name} actions`} aria-expanded={menu === d.id} onClick={() => setMenu(menu === d.id ? null : d.id)}><Ellipsis size={14} /></button>
+                  {menu === d.id && (
+                    <Menu onClose={() => setMenu(null)} items={[
+                      { label: "Delete…", danger: true, run: () => removeDesign(d) },
+                    ]} />
+                  )}
+                </div>
+              );
+            })}
+            <div className="new-col-row design-new">
+              <button className="new-col" onClick={() => createDesign(blankSpec("New API"))}><Plus size={14} /> New design</button>
+              <button className="new-col" onClick={() => createDesign(exampleSpec())}>Example</button>
+            </div>
+          </nav>
         ) : (
           <nav className="tree history">
             {ws.history.length === 0 && <p className="muted small pad">Sent requests appear here.</p>}
@@ -573,7 +648,9 @@ export default function App() {
         )}
         <header className="toolbar" data-tauri-drag-region>
           <div className="crumbs" data-tauri-drag-region>
-            {req ? (
+            {sidebarTab === "design" ? (
+              <span className="title">API design</span>
+            ) : req ? (
               <input className="title" value={req.name} size={Math.max(6, req.name.length + 1)} onChange={(e) => edit({ name: e.target.value })} aria-label="Request name" spellCheck={false} />
             ) : <span className="title muted">Tether</span>}
             {dirty && <button className="glass pill" onClick={save} title="Save (⌘S)">Save</button>}
@@ -593,7 +670,27 @@ export default function App() {
           <button className="glass tool round" aria-label="Command palette" title="Commands (⌘K)" onClick={() => setPalette(true)}><Command size={15} /></button>
         </header>
 
-        {!req ? (
+        {sidebarTab === "design" ? (
+          design ? (
+            <Designer
+              key={design.id}
+              design={design}
+              canRun={canUseFolders}
+              hasCollection={!!design.collectionId && ws.collections.some((c) => c.id === design.collectionId)}
+              onSpec={(spec) => patchDesign(design.id, { spec })}
+              onRename={(name) => patchDesign(design.id, { name })}
+              onGenerate={(base) => generateFromDesign(design, base)}
+              onUseMock={(base) => useMockEnvironment(design, base)}
+            />
+          ) : (
+            <div className="first-run">
+              <h1>Design an API</h1>
+              <p>Sketch endpoints and schemas, get OpenAPI, and try it on a local mock server.</p>
+              <button className="primary" onClick={() => createDesign(blankSpec("New API"))}><PencilRuler size={14} /> New design</button>
+              <button className="ghost small import-link" onClick={() => createDesign(exampleSpec())}>Start from an example</button>
+            </div>
+          )
+        ) : !req ? (
           <div className="first-run">
             <h1>Start with a request</h1>
             <p>Everything stays on this Mac. No account required.</p>
@@ -662,6 +759,8 @@ export default function App() {
           actions={[
             { label: "New request", hint: "⌘N", run: () => addRequest() },
             { label: "New collection", run: addCollection },
+            { label: "New API design", run: () => createDesign(blankSpec("New API")) },
+            ...designs.map((d) => ({ label: `Open design: ${d.name}`, run: () => { setDesignId(d.id); setSidebarTab("design"); } })),
             { label: "Import cURL, Postman, Insomnia or OpenAPI…", hint: "⇧⌘I", run: () => setImporting({}) },
             ...(req ? [{ label: "Copy request as cURL", hint: "⌥⌘C", run: () => copyAsCurl(req) }, { label: "Duplicate request", run: () => duplicate(req.id) }, { label: "Delete request…", run: () => removeRequest(req) }] : []),
             { label: "Edit environments", hint: "⌘E", run: () => setEnvOpen(true) },
@@ -675,7 +774,7 @@ export default function App() {
           ]}
         />
       )}
-      {importing && <ImportDialog initialText={importing.text} onImport={(r) => runImport(r, importing.into)} onClose={() => setImporting(null)} />}
+      {importing && <ImportDialog initialText={importing.text} onImport={(r) => runImport(r, importing.into)} onDesign={(spec, name) => { createDesign(spec, name); setImporting(null); }} onClose={() => setImporting(null)} />}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
       {settingsOpen && <SettingsPanel settings={appearance.settings} update={appearance.update} reduced={appearance.reduced} onClose={() => setSettingsOpen(false)} />}
       {agentOpen && <AgentPanel agent={agent} ws={ws} policy={agentPolicy} setPolicy={setAgentPolicy} activity={agentActivity} onClose={() => setAgentOpen(false)} />}

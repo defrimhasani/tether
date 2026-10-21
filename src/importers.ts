@@ -154,7 +154,7 @@ function importInsomnia(data: Obj): ImportResult {
 
 /* ——— OpenAPI / Swagger ——— */
 
-function deref(root: Obj, node: unknown, depth = 0): unknown {
+export function deref(root: Obj, node: unknown, depth = 0): unknown {
   if (isObj(node) && typeof node.$ref === "string" && node.$ref.startsWith("#/") && depth < 8) {
     const target = node.$ref.slice(2).split("/").reduce<unknown>((acc, k) => (isObj(acc) ? acc[k.replace(/~1/g, "/").replace(/~0/g, "~")] : undefined), root);
     return deref(root, target, depth + 1);
@@ -162,7 +162,7 @@ function deref(root: Obj, node: unknown, depth = 0): unknown {
   return node;
 }
 
-function sample(root: Obj, schema: unknown, depth = 0): unknown {
+export function sample(root: Obj, schema: unknown, depth = 0): unknown {
   const s = deref(root, schema);
   if (!isObj(s) || depth > 4) return null;
   if (s.example !== undefined) return s.example;
@@ -183,7 +183,7 @@ function sample(root: Obj, schema: unknown, depth = 0): unknown {
   return s.format === "date-time" ? "2024-01-01T00:00:00Z" : "string";
 }
 
-function importOpenApi(data: Obj): ImportResult {
+export function importOpenApi(data: Obj): ImportResult {
   const warnings: string[] = [];
   const title = str(isObj(data.info) ? data.info.title : "", "API");
   const isV2 = typeof data.swagger === "string";

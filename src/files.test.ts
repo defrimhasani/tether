@@ -62,4 +62,28 @@ describe("workspace files", () => {
     expect(new Set(ids).size).toBe(ids.length);
     expect(problems[0]).toContain("duplicate id");
   });
+
+  it("stores API designs as YAML files and keeps their link to a collection", () => {
+    const ws = demoWorkspace();
+    ws.designs = [
+      { id: "d1", name: "Todo API", spec: "openapi: 3.0.3\ninfo:\n  title: Todo API\n", collectionId: ws.collections[0].id },
+      { id: "d2", name: "Todo API", spec: "openapi: 3.0.3" },
+    ];
+    const files = toFiles(ws);
+    expect(Object.keys(files)).toEqual(expect.arrayContaining(["designs/todo-api.yaml", "designs/todo-api-2.yaml"]));
+    expect(files["designs/todo-api-2.yaml"]).toBe("openapi: 3.0.3\n");
+    const { workspace, problems } = fromFiles(files);
+    expect(problems).toEqual([]);
+    expect(workspace.designs).toEqual([
+      { id: "d1", name: "Todo API", spec: ws.designs[0].spec, collectionId: ws.collections[0].id },
+      { id: "d2", name: "Todo API", spec: "openapi: 3.0.3\n" },
+    ]);
+  });
+
+  it("picks up a spec dropped into designs/ by hand, and writes no designs key without any", () => {
+    expect(JSON.parse(toFiles(demoWorkspace())["tether.json"])).not.toHaveProperty("designs");
+    const files = { ...toFiles(demoWorkspace()), "designs/payments.yml": "openapi: 3.1.0\n" };
+    const { workspace } = fromFiles(files);
+    expect(workspace.designs).toMatchObject([{ name: "payments", spec: "openapi: 3.1.0\n" }]);
+  });
 });

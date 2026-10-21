@@ -57,8 +57,12 @@ export type HistoryEntry = {
   error?: SendError;
 };
 
+/** An OpenAPI document being designed. `spec` is the YAML text, the single source of truth. */
+export type ApiDesign = { id: string; name: string; spec: string; /** Collection generated from this design. */ collectionId?: string };
+
 export type Workspace = {
   collections: Collection[];
+  designs?: ApiDesign[];
   environments: Environment[];
   activeEnvId: string | null;
   history: HistoryEntry[];
