@@ -223,7 +223,8 @@ pub fn run() {
       mcp::mcp_stop,
       mcp::mcp_status,
       mcp::mcp_respond,
-      mcp::agent_autostart
+      mcp::agent_autostart,
+      mcp::agent_debug_grant
     ])
     .setup(|app| {
       if cfg!(debug_assertions) {

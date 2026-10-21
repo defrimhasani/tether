@@ -69,6 +69,15 @@ export default function App() {
   }, [activeId]);
 
   useEffect(() => localStorage.setItem("tether.split", String(split)), [split]);
+  // Debug builds only: a real saved GET is pre-granted for the MCP SDK end-to-end test.
+  useEffect(() => {
+    import("@tauri-apps/api/core").then(({ invoke }) => invoke<boolean>("agent_debug_grant").then((on) => {
+      if (on) setAgentPolicy((p) => {
+        const request = allRequests(ws).map(({ request }) => request).find((r) => r.method === "GET" && !r.url.includes("{{@"));
+        return request ? { version: 1, grants: [{ requestId: request.id, environments: ["env-demo"] }] } : p;
+      });
+    }).catch(() => {}));
+  }, []);
   useEffect(() => localStorage.setItem("tether.agent.policy", JSON.stringify(agentPolicy)), [agentPolicy]);
   useEffect(() => localStorage.setItem("tether.agent.activity", JSON.stringify(agentActivity.slice(0, 100))), [agentActivity]);
 
