@@ -4,7 +4,7 @@ import {
   type HistoryEntry, type KV, type Method, type RequestDef, type SendError, type Workspace,
 } from "./model";
 import {
-  downstreamUses, insertReference, interpolate, renameReferences, resolveToken, suggestTarget, tokensIn, uniqueName,
+  TOKEN, downstreamUses, insertReference, interpolate, renameReferences, resolveToken, suggestTarget, tokensIn, uniqueName,
   type Field, type InsertTarget, type Resolution,
 } from "./refs";
 import { cancel, send } from "./http";
@@ -13,7 +13,7 @@ import { Scenery } from "./Scenery";
 import { BodyEditor } from "./BodyEditor";
 import { maskHeader } from "./markup";
 import {
-  ArrowUp, Bot, Command, Ellipsis, Folder, FolderPlus, Layers, Plus, Search, Settings as SettingsIcon, SlidersHorizontal, Square, SquarePen, X,
+  ArrowUp, Bot, Command, Ellipsis, FileDown, Folder, FolderPlus, Layers, Plus, Search, Settings as SettingsIcon, SlidersHorizontal, Square, SquarePen, X,
 } from "lucide-react";
 import * as ops from "./workspace-ops";
 import { useWorkspace } from "./useWorkspace";
@@ -24,6 +24,9 @@ import { SettingsPanel } from "./SettingsPanel";
 import { useSettings } from "./settings";
 import { modKey } from "./platform";
 import { RocketGame } from "./RocketGame";
+import { ImportDialog } from "./ImportDialog";
+import { describe as describeImport, mergeImport, type ImportResult } from "./importers";
+import { looksLikeCurl, parseCurl, toCurl } from "./curl";
 import { EMPTY_POLICY, allowed as agentAllowed, dependencies as agentDependencies, inputsFor, isWrite, toolName, type AgentPolicy } from "./agent/policy";
 import { redact, redactHeaders, resolveWithInputs, validateInputs } from "./agent/safety";
 import { requestSummary, resolveEnvironment, resolveRequest, shapeResponse, toolList } from "./agent/tools";
@@ -281,6 +284,34 @@ export default function App() {
 
   const open = (id: string) => { setActiveId(id); setViewing(null); setMenu(null); };
 
+  const [importing, setImporting] = useState<{ text?: string; into?: string } | null>(null);
+  const runImport = (r: ImportResult, into?: string) => {
+    // A single cURL command lands beside the request you're on instead of in a new collection.
+    const home = into ?? (r.source === "cURL command" ? (ws.collections.find((c) => c.requests.some((x) => x.id === activeId)) ?? ws.collections[0])?.id : undefined);
+    const { ws: next, firstRequestId } = mergeImport(ws, r, home);
+    setWs(next);
+    if (firstRequestId) open(firstRequestId);
+    setImporting(null);
+    setNarrowView("request");
+    setNotice({ tone: "info", text: `Imported ${describeImport(r)}${r.warnings.length ? `, with ${r.warnings.length} note${r.warnings.length === 1 ? "" : "s"}` : ""}.${r.environments.length ? ` Switched to “${next.environments.find((e) => e.id === next.activeEnvId)?.name}”.` : ""}` });
+  };
+  const copyAsCurl = async (r: RequestDef) => {
+    let secret = false;
+    const missing = new Set<string>();
+    const fill = (t: string) => t.replace(TOKEN, (m, name: string) => {
+      const x = resolveToken(ws, name);
+      if (x.ok) { if (x.kind === "secret") secret = true; return x.value; }
+      missing.add(name);
+      return m;
+    });
+    const text = toCurl(r, fill);
+    try { await navigator.clipboard.writeText(text); } catch { setNotice({ tone: "error", text: "Couldn’t copy to the clipboard." }); return; }
+    setNotice({
+      tone: "info",
+      text: `Copied as cURL.${secret ? " It includes secret values." : ""}${missing.size ? ` Unresolved: ${[...missing].map((n) => `{{${n}}}`).join(", ")}.` : ""}`,
+    });
+  };
+
   const addRequest = (collectionId?: string) => {
     const [next, r] = ops.addRequest(ws, collectionId);
     setWs(next);
@@ -386,6 +417,8 @@ export default function App() {
       if (e.key === "Enter" && req) { e.preventDefault(); sendRequest(req); }
       else if (e.key === "." && pending) { e.preventDefault(); cancel(pending.sendId); }
       else if (e.key === "s") { e.preventDefault(); save(); }
+      else if (e.shiftKey && e.key.toLowerCase() === "i") { e.preventDefault(); setImporting({}); }
+      else if (e.altKey && e.code === "KeyC" && req) { e.preventDefault(); copyAsCurl(req); }
       else if (e.key === "k" || e.key === "p") { e.preventDefault(); setPalette((p) => !p); }
       else if (e.key === "n") { e.preventDefault(); addRequest(); }
       else if (e.key === "e") { e.preventDefault(); setEnvOpen(true); }
@@ -457,6 +490,7 @@ export default function App() {
                         <Menu onClose={() => setMenu(null)} items={[
                           { label: "Rename", run: () => setRenamingCol(c.id) },
                           { label: "New request", run: () => addRequest(c.id) },
+                          { label: "Import into collection…", run: () => setImporting({ into: c.id }) },
                           { label: "Delete…", danger: true, run: () => removeCollection(c.id) },
                         ]} />
                       )}
@@ -483,6 +517,7 @@ export default function App() {
                           <Menu onClose={() => setMenu(null)} items={[
                             { label: "Rename", run: () => { open(r.id); setTimeout(() => document.querySelector<HTMLInputElement>(".title")?.select()); } },
                             { label: "Duplicate", run: () => duplicate(r.id) },
+                            { label: "Copy as cURL", run: () => copyAsCurl(drafts[r.id] ?? r) },
                             { label: "Move up", hint: "⌥⌘↑", run: () => nudge(r.id, -1) },
                             { label: "Move down", hint: "⌥⌘↓", run: () => nudge(r.id, 1) },
                             ...ws.collections.filter((x) => x.id !== c.id).map((x) => ({ label: `Move to ${x.name}`, run: () => setWs((w) => ops.moveRequest(w, r.id, x.id, Infinity)) })),
@@ -497,7 +532,12 @@ export default function App() {
               {q && !ws.collections.some((c) => c.requests.some((r) => r.name.toLowerCase().includes(q) || r.url.toLowerCase().includes(q))) && (
                 <p className="muted small pad">No requests match “{filter}”.</p>
               )}
-              {!q && <button className="new-col" onClick={addCollection}><FolderPlus size={14} /> New collection</button>}
+              {!q && (
+                <div className="new-col-row">
+                  <button className="new-col" onClick={addCollection}><FolderPlus size={14} /> New collection</button>
+                  <button className="new-col" onClick={() => setImporting({})}><FileDown size={14} /> Import</button>
+                </div>
+              )}
             </nav>
           </>
         ) : (
@@ -558,6 +598,7 @@ export default function App() {
             <h1>Start with a request</h1>
             <p>Everything stays on this Mac. No account required.</p>
             <button className="primary" onClick={() => addRequest()}><SquarePen size={14} /> New request <kbd>⌘N</kbd></button>
+            <button className="ghost small import-link" onClick={() => setImporting({})}><FileDown size={13} /> Import cURL, Postman or OpenAPI</button>
             <RocketGame />
           </div>
         ) : (
@@ -566,7 +607,13 @@ export default function App() {
               <select className={`method m-${req.method}`} value={req.method} onChange={(e) => edit({ method: e.target.value as Method })} aria-label="Method">
                 {METHODS.map((m) => <option key={m}>{m}</option>)}
               </select>
-              <TemplateInput ws={ws} value={req.url} onChange={(url) => edit({ url })} onCursor={(pos) => (cursors.current[req.id] = { field: "url", pos })} placeholder="https://api.example.com/resource" />
+              <TemplateInput ws={ws} value={req.url} onChange={(url) => edit({ url })} onCursor={(pos) => (cursors.current[req.id] = { field: "url", pos })} placeholder="https://api.example.com/resource"
+                onPasteCurl={(t) => {
+                  const r = parseCurl(t);
+                  if ("error" in r) { setNotice({ tone: "error", text: r.error }); return; }
+                  edit({ method: r.request.method, url: r.request.url, headers: r.request.headers, body: r.request.body });
+                  setNotice({ tone: "info", text: `Filled this request from a cURL command.${r.warnings.length ? ` ${r.warnings[0]}` : ""}` });
+                }} />
               {pending?.requestId === req.id ? (
                 <button type="button" className="send cancel" onClick={() => cancel(pending.sendId)} title="Cancel (⌘.)"><Square size={11} fill="currentColor" /> Cancel</button>
               ) : (
@@ -615,7 +662,8 @@ export default function App() {
           actions={[
             { label: "New request", hint: "⌘N", run: () => addRequest() },
             { label: "New collection", run: addCollection },
-            ...(req ? [{ label: "Duplicate request", run: () => duplicate(req.id) }, { label: "Delete request…", run: () => removeRequest(req) }] : []),
+            { label: "Import cURL, Postman, Insomnia or OpenAPI…", hint: "⇧⌘I", run: () => setImporting({}) },
+            ...(req ? [{ label: "Copy request as cURL", hint: "⌥⌘C", run: () => copyAsCurl(req) }, { label: "Duplicate request", run: () => duplicate(req.id) }, { label: "Delete request…", run: () => removeRequest(req) }] : []),
             { label: "Edit environments", hint: "⌘E", run: () => setEnvOpen(true) },
             { label: "Agent access…", run: () => setAgentOpen(true) },
             { label: "Settings…", hint: "⌘,", run: () => setSettingsOpen(true) },
@@ -627,6 +675,7 @@ export default function App() {
           ]}
         />
       )}
+      {importing && <ImportDialog initialText={importing.text} onImport={(r) => runImport(r, importing.into)} onClose={() => setImporting(null)} />}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
       {settingsOpen && <SettingsPanel settings={appearance.settings} update={appearance.update} reduced={appearance.reduced} onClose={() => setSettingsOpen(false)} />}
       {agentOpen && <AgentPanel agent={agent} ws={ws} policy={agentPolicy} setPolicy={setAgentPolicy} activity={agentActivity} onClose={() => setAgentOpen(false)} />}
@@ -705,7 +754,7 @@ function StatusChip({ entry }: { entry: HistoryEntry }) {
   return <span className="chip bad">{entry.error?.kind === "cancelled" ? "—" : "ERR"}</span>;
 }
 
-function TemplateInput({ ws, value, onChange, onCursor, placeholder, multiline }: { ws: Workspace; value: string; onChange: (v: string) => void; onCursor?: (pos: number) => void; placeholder?: string; multiline?: boolean }) {
+function TemplateInput({ ws, value, onChange, onCursor, onPasteCurl, placeholder, multiline }: { ws: Workspace; value: string; onChange: (v: string) => void; onCursor?: (pos: number) => void; onPasteCurl?: (text: string) => void; placeholder?: string; multiline?: boolean }) {
   // Overlay highlights {{tokens}} by resolution state beneath a transparent native input.
   const parts = value.split(/(\{\{[^}]+\}\})/g);
   const overlay = parts.map((p, i) => {
@@ -715,7 +764,12 @@ function TemplateInput({ ws, value, onChange, onCursor, placeholder, multiline }
     return <mark key={i} className={r.ok ? (r.kind === "response" ? "ref" : "var") : "broken"}>{p}</mark>;
   });
   const track = (e: { currentTarget: HTMLInputElement | HTMLTextAreaElement }) => onCursor?.(e.currentTarget.selectionStart ?? value.length);
-  const props = { value, placeholder, spellCheck: false, onChange: (e: { target: { value: string } }) => onChange(e.target.value), onSelect: track, onBlur: track };
+  const props = { value, placeholder, spellCheck: false, onChange: (e: { target: { value: string } }) => onChange(e.target.value), onSelect: track, onBlur: track,
+    onPaste: (e: React.ClipboardEvent) => {
+      const t = e.clipboardData.getData("text");
+      if (onPasteCurl && looksLikeCurl(t)) { e.preventDefault(); onPasteCurl(t); }
+    },
+  };
   return (
     <div className={`tpl ${multiline ? "multi" : ""}`}>
       <div className="tpl-overlay" aria-hidden>{overlay}{multiline ? "\n" : ""}</div>

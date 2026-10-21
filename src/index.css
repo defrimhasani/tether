@@ -245,6 +245,9 @@ svg { flex: none; }
 .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--orange); flex: none; }
 .drop { box-shadow: 0 -2px 0 var(--accent); border-radius: 2px; }
 .tree header.drop { box-shadow: inset 0 0 0 2px var(--accent); }
+.new-col-row { display: flex; gap: 14px; margin-left: 22px; }
+.new-col-row .new-col { margin-left: 0; }
+.import-link { margin-top: 8px; }
 .new-col { display: flex; align-items: center; gap: 6px; margin: 12px 0 0 22px; color: var(--ink-3); font-size: 12px; }
 .new-col:hover { color: var(--accent); }
 .empty-side { padding: 16px 18px; color: var(--ink-3); }
@@ -756,6 +759,26 @@ mark.hit { background: color-mix(in srgb, #ffd60a 55%, transparent); color: inhe
   -webkit-backdrop-filter: blur(40px) saturate(190%); backdrop-filter: blur(40px) saturate(190%);
   box-shadow: 0 0.5px 0 var(--glass-hi) inset, var(--shadow-pop); animation: glass-in 240ms var(--ease);
 }
+.import-dialog {
+  width: min(560px, 92vw); padding: 20px 20px 16px; border-radius: 22px; display: flex; flex-direction: column; gap: 10px;
+  background: var(--glass-strong);
+  -webkit-backdrop-filter: blur(40px) saturate(190%); backdrop-filter: blur(40px) saturate(190%);
+  box-shadow: 0 0.5px 0 var(--glass-hi) inset, var(--shadow-pop); animation: glass-in 240ms var(--ease);
+}
+.import-dialog.over { box-shadow: 0 0.5px 0 var(--glass-hi) inset, var(--shadow-pop), 0 0 0 3px color-mix(in srgb, var(--accent) 45%, transparent); }
+.import-dialog h2 { margin: 0; font-size: 15px; font-weight: 700; letter-spacing: -0.01em; }
+.import-dialog p { margin: 0; font-size: 12.5px; }
+.import-dialog textarea {
+  height: 190px; resize: none; padding: 10px 12px; border: 0; border-radius: 12px; background: var(--canvas); color: var(--ink);
+  box-shadow: 0 0 0 0.5px var(--sep-strong); font: 12px/1.55 var(--mono); user-select: text; -webkit-user-select: text; cursor: text;
+}
+.import-dialog textarea:focus { outline: none; box-shadow: 0 0 0 3.5px color-mix(in srgb, var(--accent) 30%, transparent), 0 0 0 0.5px var(--accent); }
+.import-status { min-height: 18px; font-size: 12.5px; color: var(--ink-2); }
+.import-status .bad { color: var(--red); display: inline-flex; align-items: center; gap: 5px; }
+.import-warn { margin: -2px 0 0; padding-left: 18px; font-size: 12px; color: var(--ink-3); display: grid; gap: 2px; }
+.import-foot { display: flex; align-items: center; gap: 8px; padding-top: 4px; }
+.import-foot .spacer { flex: 1; }
+.import-foot .primary:disabled { opacity: 0.45; }
 .dialog h2 { font-size: 14px; font-weight: 700; margin: 0 0 8px; }
 .dialog p { margin: 0 0 6px; color: var(--ink-2); font-size: 12px; }
 .dialog .modal-foot { gap: 8px; display: grid; grid-template-columns: 1fr 1fr; padding-top: 16px; }
