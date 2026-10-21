@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-10-21T13:10:00Z",
+  "title": "Design System: Tether",
+  "extensions": {
+    "colorMeta": {
+      "accent-app": { "role": "primary", "displayName": "System Accent (app)", "canonical": "-apple-system-control-accent", "fallback": "#0a84ff", "scope": "app" },
+      "accent-site": { "role": "primary", "displayName": "Fixed Accent (site fill)", "canonical": "#0071e3", "scope": "site" },
+      "link-site": { "role": "primary", "displayName": "Link Blue", "canonical": "#0062cc", "dark": "#409cff", "scope": "site" },
+      "green": { "role": "secondary", "displayName": "GET / Success Green", "canonical": "#1d8a3a", "dark": "#30d158" },
+      "orange": { "role": "secondary", "displayName": "POST / Warning Orange", "canonical": "#b35c00", "dark": "#ff9f0a" },
+      "blue": { "role": "secondary", "displayName": "PUT / Variable Blue", "canonical": "#0062cc", "dark": "#409cff" },
+      "purple": { "role": "secondary", "displayName": "PATCH / Reference Purple", "canonical": "#8944ab", "dark": "#da8fff" },
+      "red": { "role": "secondary", "displayName": "DELETE / Error Red", "canonical": "#d70015", "dark": "#ff6961" },
+      "page-site": { "role": "neutral", "displayName": "Page Ground", "canonical": "#eef2f7", "dark": "#0b0f1c", "scope": "site" },
+      "ground-site": { "role": "neutral", "displayName": "Landscape Floor", "canonical": "#6ea9a4", "dark": "#123a48", "scope": "site" },
+      "ink-3-site": { "role": "neutral", "displayName": "Tertiary Label (web)", "canonical": "rgb(60 60 67 / 0.76)", "dark": "rgb(235 235 245 / 0.58)", "scope": "site" },
+      "canvas": { "role": "neutral", "displayName": "Canvas", "canonical": "#ffffff", "dark": "#1e1e20" },
+      "canvas-2": { "role": "neutral", "displayName": "Pane", "canonical": "#f7f7f9", "dark": "#252528" }
+    },
+    "landscape": {
+      "site": {
+        "pixel": "6px",
+        "skyLight": ["#c9dcf2", "#d3e3f4", "#dde9f6", "#e7eff8", "#f1f5fa"],
+        "skyDark": ["#070b18", "#0a1020", "#0d1529", "#111b33", "#16223e"],
+        "rangesLight": { "far": "#bccbe8", "mid": "#9db8db", "near": "#6ea9a4" },
+        "rangesDark": { "far": "#213259", "mid": "#1a2a4c", "near": "#123a48" },
+        "orb": { "light": "#ffb340", "dark": "#ece8d6" },
+        "cloud": { "light": "rgb(255 255 255 / 0.85)", "dark": "rgb(160 180 220 / 0.12)" }
+      },
+      "app": {
+        "pixel": "4px",
+        "farRange": "color-mix(in srgb, var(--accent) 10%, transparent) / 14% dark",
+        "nearRange": "color-mix(in srgb, var(--teal) 15%, transparent) / 16% dark",
+        "cloud": "rgb(0 0 0 / 0.045) / rgb(255 255 255 / 0.045) dark",
+        "orb": "rgb(255 159 10 / 0.28) / rgb(235 235 245 / 0.22) dark",
+        "planeOpacity": 0.55
+      }
+    },
+    "typographyMeta": {
+      "display-site": { "displayName": "Hero headline (site)", "value": "700 clamp(2.3rem, 3.9vw, 3.5rem)/1.06, -0.036em", "purpose": "The one hero line above the palette." },
+      "headline-site": { "displayName": "Section headline (site)", "value": "700 clamp(1.95rem, 3.4vw, 2.9rem)/1.08, -0.032em", "purpose": "Section titles beside replicas." },
+      "body-site": { "displayName": "Body (site)", "value": "400 17px/1.55, -0.011em", "purpose": "Page copy; 16px under 640px." },
+      "body-app": { "displayName": "Body (app)", "value": "13px/1.4, -0.003em", "purpose": "App UI and replicas." },
+      "mono": { "displayName": "SF Mono", "value": "ui-monospace, \"SF Mono\", Menlo", "purpose": "Code only: URLs, headers, bodies, JSON, references, method badges, keys." }
+    },
+    "shadows": [
+      { "name": "shadow-float", "value": "0 0.5px 0 rgb(255 255 255 / 0.6) inset, 0 1px 2px rgb(0 0 0 / 0.06), 0 4px 14px rgb(0 0 0 / 0.06)", "purpose": "Glass controls." },
+      { "name": "shadow-pane", "value": "0 0 0 0.5px rgb(0 0 0 / 0.06), 0 8px 30px rgb(0 0 0 / 0.08), 0 1px 3px rgb(0 0 0 / 0.05)", "purpose": "App floating sidebar." },
+      { "name": "shadow-pop", "value": "0 0 0 0.5px rgb(0 0 0 / 0.1), 0 20px 60px rgb(0 0 0 / 0.18), 0 4px 12px rgb(0 0 0 / 0.08)", "purpose": "App menus, palette, dialogs." },
+      { "name": "shadow-pop-site", "value": "0 0 0 0.5px rgb(0 0 0 / 0.1), 0 24px 70px rgb(20 40 80 / 0.22), 0 4px 12px rgb(0 0 0 / 0.08)", "purpose": "Site palette, menus, sheets, installers." },
+      { "name": "shadow-window-site", "value": "0 0 0 0.5px rgb(0 0 0 / 0.12), 0 40px 90px rgb(20 40 80 / 0.2), 0 6px 18px rgb(0 0 0 / 0.07)", "purpose": "Site app-window and Finder replicas." }
+    ],
+    "motion": [
+      { "name": "ease", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "The one easing family." },
+      { "name": "glass-in", "value": "260ms ease: translateY(4px) scale(0.97) blur(3px) → sharp", "purpose": "Floating glass entrance." },
+      { "name": "rise-site", "value": "820ms ease, 120ms delay: translateY(14px) scale(0.975) blur(6px) → sharp", "purpose": "Hero palette entrance on the site." },
+      { "name": "send-ring", "value": "1.8s ease infinite: accent ring 0 → 9px, 45% → 0", "purpose": "URL capsule while a request is in flight." },
+      { "name": "send-sweep", "value": "1.6s ease-in-out infinite: 40%-wide 16% accent band across the capsule", "purpose": "URL capsule while in flight." },
+      { "name": "send-ping", "value": "1.4s ease infinite: 7px dot halo scale 2.8, fade", "purpose": "Live dot on the sending sidebar row." },
+      { "name": "send-sonar", "value": "1.8s infinite: 12px dot breathes 0.82; two rings scale 4.5 and fade, 0.9s apart", "purpose": "Response pane while waiting." },
+      { "name": "landscape-pan", "value": "steps(): clouds/hills pan tile width over 420–1600s", "purpose": "Pixel landscape parallax; hard steps only." },
+      { "name": "landscape-plane", "value": "site 56s steps(280) + 3s bob; app 240s steps(480) + 3.2s bob", "purpose": "Paper plane flight." }
+    ],
+    "breakpoints": [
+      { "name": "site-compact", "value": "980px" },
+      { "name": "site-narrow", "value": "640px" },
+      { "name": "app-narrow", "value": "960px" }
+    ]
+  },
+  "components": [
+    {
+      "name": "Command Palette",
+      "kind": "custom",
+      "refersTo": "palette",
+      "description": "Liquid Glass palette: hero and navigation on the site, ⌘K in the app.",
+      "html": "<div class=\"ds-palette\"><div class=\"ds-pal-search\"><input placeholder=\"Search or jump to…\"></div><div class=\"ds-pal-group\">Download</div><div class=\"ds-pal-row ds-on\"><span class=\"ds-pal-ico\"></span><span><b class=\"ds-pal-t\">Download for macOS</b><small class=\"ds-pal-s\">Apple silicon and Intel</small></span><kbd class=\"ds-kbd ds-ret\">↵</kbd></div><div class=\"ds-pal-row\"><span class=\"ds-pal-ico\"></span><span><b class=\"ds-pal-t\">See request chaining</b><small class=\"ds-pal-s\">Tour</small></span><span></span></div></div>",
+      "css": ".ds-palette { width: 480px; border-radius: 22px; overflow: hidden; background: var(--glass-strong, rgb(255 255 255 / 0.8)); border: 0.5px solid var(--glass-edge, rgb(0 0 0 / 0.08)); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.1), 0 24px 70px rgb(20 40 80 / 0.22), 0 4px 12px rgb(0 0 0 / 0.08); backdrop-filter: blur(32px) saturate(190%); font-family: -apple-system, BlinkMacSystemFont, system-ui, sans-serif; color: rgb(0 0 0 / 0.87); } .ds-pal-search { height: 58px; display: flex; align-items: center; padding: 0 20px; border-bottom: 0.5px solid rgb(0 0 0 / 0.08); } .ds-pal-search input { flex: 1; border: 0; outline: 0; background: none; font: 400 18px/1 inherit; color: inherit; } .ds-pal-group { padding: 10px 20px 5px; font-size: 11.5px; font-weight: 600; color: rgb(60 60 67 / 0.76); } .ds-pal-row { display: grid; grid-template-columns: 30px 1fr auto; align-items: center; gap: 12px; min-height: 48px; margin: 0 8px; padding: 6px 12px 6px 10px; border-radius: 11px; cursor: pointer; } .ds-pal-row:hover { background: rgb(0 0 0 / 0.045); } .ds-pal-row.ds-on { background: var(--accent, #0071e3); color: white; } .ds-pal-ico { width: 30px; height: 30px; border-radius: 8px; background: rgb(120 120 128 / 0.08); } .ds-on .ds-pal-ico { background: rgb(255 255 255 / 0.2); } .ds-pal-t { display: block; font-size: 15px; font-weight: 590; letter-spacing: -0.012em; } .ds-pal-s { display: block; font-size: 12.5px; color: rgb(60 60 67 / 0.76); } .ds-on .ds-pal-s { color: rgb(255 255 255 / 0.92); } .ds-kbd { display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 5px; font: 500 11px/1 inherit; background: rgb(120 120 128 / 0.08); box-shadow: inset 0 0 0 0.5px rgb(0 0 0 / 0.14); } .ds-on .ds-ret { background: rgb(255 255 255 / 0.2); color: white; box-shadow: none; }"
+    },
+    {
+      "name": "Primary Capsule Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "Accent capsule for Send, Download and Approve.",
+      "html": "<button class=\"ds-btn-primary\">Download</button>",
+      "css": ".ds-btn-primary { display: inline-flex; align-items: center; gap: 7px; height: 34px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--accent, #0071e3); color: white; font: 600 13.5px -apple-system, system-ui, sans-serif; box-shadow: 0 4px 12px color-mix(in srgb, var(--accent, #0071e3) 30%, transparent); cursor: pointer; transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1), filter 150ms; } .ds-btn-primary:hover { filter: brightness(1.07); } .ds-btn-primary:active { transform: scale(0.96); } .ds-btn-primary:focus-visible { outline: 2px solid var(--accent, #0071e3); outline-offset: 2px; }"
+    },
+    {
+      "name": "Fill Capsule Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Neutral capsule for secondary actions and Cancel.",
+      "html": "<button class=\"ds-btn-fill\">Deny</button>",
+      "css": ".ds-btn-fill { height: 32px; padding: 0 14px; border: 0; border-radius: 999px; background: var(--fill, rgb(120 120 128 / 0.14)); color: var(--ink, rgb(0 0 0 / 0.87)); font: 600 13px -apple-system, system-ui, sans-serif; cursor: pointer; transition: transform 160ms cubic-bezier(0.16, 1, 0.3, 1); } .ds-btn-fill:hover { background: color-mix(in srgb, rgb(0 0 0 / 0.87) 14%, transparent); } .ds-btn-fill:active { transform: scale(0.96); } .ds-btn-fill:focus-visible { outline: 2px solid var(--accent, #0071e3); outline-offset: 2px; }"
+    },
+    {
+      "name": "URL Capsule (sending)",
+      "kind": "input",
+      "refersTo": "urlbar",
+      "description": "44px URL capsule with method badge and 34px Send; shows the Send pulse while in flight.",
+      "html": "<div class=\"ds-url ds-sending\"><span class=\"ds-method\">GET</span><span class=\"ds-addr\">{{baseUrl}}/anything</span><span class=\"ds-send\">Cancel</span></div>",
+      "css": ".ds-url { position: relative; display: flex; align-items: center; gap: 4px; width: 460px; height: 44px; padding: 0 5px 0 6px; border-radius: 999px; background: var(--canvas-2, #f7f7f9); font-family: -apple-system, system-ui, sans-serif; } .ds-method { height: 32px; padding: 0 12px; display: grid; place-items: center; border-radius: 999px; background: rgb(120 120 128 / 0.08); color: #1d8a3a; font: 700 12px/1 ui-monospace, Menlo, monospace; } .ds-addr { flex: 1; padding: 0 8px; font: 13px/1 ui-monospace, Menlo, monospace; color: #0062cc; } .ds-send { height: 34px; padding: 0 16px; display: grid; place-items: center; border-radius: 999px; background: rgb(120 120 128 / 0.14); font-weight: 600; font-size: 13px; } .ds-sending { animation: ds-ring 1.8s cubic-bezier(0.16, 1, 0.3, 1) infinite; } .ds-sending::after { content: \"\"; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--accent, #0071e3) 16%, transparent), transparent) no-repeat; background-size: 40% 100%; animation: ds-sweep 1.6s ease-in-out infinite; } @keyframes ds-ring { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent, #0071e3) 45%, transparent); } 70%, 100% { box-shadow: 0 0 0 9px transparent; } } @keyframes ds-sweep { from { background-position: -70% 0; } to { background-position: 170% 0; } } @media (prefers-reduced-motion: reduce) { .ds-sending, .ds-sending::after { animation: none; } .ds-sending { box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent, #0071e3) 35%, transparent); } }"
+    },
+    {
+      "name": "Glass Menu",
+      "kind": "nav",
+      "refersTo": "menu",
+      "description": "Floating glass menu; active row is a solid accent fill.",
+      "html": "<ul class=\"ds-menu\"><li>New Request <kbd>⌘N</kbd></li><li class=\"ds-hit\">Send <kbd>⌘↵</kbd></li><li class=\"ds-sep\"></li><li>Command Palette <kbd>⌘K</kbd></li></ul>",
+      "css": ".ds-menu { list-style: none; margin: 0; padding: 6px; width: 300px; border-radius: 12px; font: 14.5px -apple-system, system-ui, sans-serif; background: var(--glass-strong, rgb(255 255 255 / 0.8)); border: 0.5px solid rgb(0 0 0 / 0.08); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.1), 0 24px 70px rgb(20 40 80 / 0.22), 0 4px 12px rgb(0 0 0 / 0.08); backdrop-filter: blur(30px) saturate(190%); } .ds-menu li { display: flex; align-items: center; justify-content: space-between; height: 32px; padding: 0 12px; border-radius: 7px; } .ds-menu li:hover, .ds-menu li.ds-hit { background: var(--accent, #0071e3); color: white; } .ds-menu kbd { font: inherit; color: rgb(60 60 67 / 0.76); } .ds-menu li:hover kbd, .ds-menu .ds-hit kbd { color: rgb(255 255 255 / 0.85); } .ds-menu .ds-sep { height: 1px; margin: 6px 12px; padding: 0; background: rgb(0 0 0 / 0.14); } .ds-menu .ds-sep:hover { background: rgb(0 0 0 / 0.14); }"
+    },
+    {
+      "name": "Method Chips",
+      "kind": "chip",
+      "refersTo": "method-colors",
+      "description": "HTTP method labels: colour always paired with the method name, in SF Mono.",
+      "html": "<div class=\"ds-methods\"><b class=\"ds-get\">GET</b><b class=\"ds-post\">POST</b><b class=\"ds-put\">PUT</b><b class=\"ds-patch\">PATCH</b><b class=\"ds-del\">DELETE</b></div>",
+      "css": ".ds-methods { display: flex; gap: 6px; } .ds-methods b { padding: 6px 9px; border-radius: 999px; font: 700 12px/1 ui-monospace, Menlo, monospace; background: rgb(120 120 128 / 0.08); } .ds-get { color: #1d8a3a; } .ds-post { color: #b35c00; } .ds-put { color: #0062cc; } .ds-patch { color: #8944ab; } .ds-del { color: #d70015; }"
+    },
+    {
+      "name": "Installer Row",
+      "kind": "card",
+      "refersTo": "installers",
+      "description": "Glass-strong installer group; the detected OS row is tinted 10% accent.",
+      "html": "<div class=\"ds-inst-group\"><div class=\"ds-inst ds-detected\"><span><b>macOS</b><small>Apple silicon · Intel</small></span><a class=\"ds-dl\">Download</a></div><div class=\"ds-inst\"><span><b>Windows</b><small>x64 installer</small></span><a class=\"ds-dl ds-dl-2\">Download</a></div></div>",
+      "css": ".ds-inst-group { width: 460px; padding: 6px; border-radius: 20px; background: var(--glass-strong, rgb(255 255 255 / 0.8)); box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.1), 0 24px 70px rgb(20 40 80 / 0.22), 0 4px 12px rgb(0 0 0 / 0.08); font-family: -apple-system, system-ui, sans-serif; } .ds-inst { display: flex; align-items: center; justify-content: space-between; min-height: 64px; padding: 8px 10px 8px 14px; border-radius: 14px; } .ds-detected { background: color-mix(in srgb, var(--accent, #0071e3) 10%, transparent); } .ds-inst b { display: block; font-size: 16px; font-weight: 600; } .ds-inst small { display: block; font-size: 13px; color: rgb(60 60 67 / 0.76); } .ds-dl { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border-radius: 999px; background: var(--accent, #0071e3); color: white; font-size: 13.5px; font-weight: 600; cursor: pointer; } .ds-dl-2 { background: rgb(120 120 128 / 0.14); color: rgb(0 0 0 / 0.87); } .ds-dl:hover { filter: brightness(1.05); } .ds-dl:active { transform: scale(0.96); }"
+    }
+  ],
+  "narrative": {
+    "northStar": "Native macOS, Liquid Glass era",
+    "overview": "Native macOS, Liquid Glass era (macOS Tahoe). Tether should feel like an app Apple shipped, not a web page in a frame. The world contributes material, type, palette and density; layout, navigation and controls stay standard macOS patterns.",
+    "keyCharacteristics": [
+      "Real vibrancy and floating glass over an opaque canvas",
+      "Neutral system materials plus one accent; HTTP method colours always beside their label",
+      "SF Pro for words, SF Mono only for code",
+      "Capsules, 0.5px edges, soft drop shadows",
+      "A stepped pixel-art landscape: faint wallpaper in the app, the page ground on the site"
+    ],
+    "rules": [
+      { "name": "The Same Plane Rule", "body": "The brand mark is the landscape's paper plane, redrawn at 2px pixels (22×14) in the accent color. It is the only logo.", "section": "landscape" },
+      { "name": "The Fixed Accent Rule", "body": "The page uses accent #0071e3 for fills and `--link` for text. It never uses the visitor's system accent, and it never puts white text on the lighter #0a84ff.", "section": "colors" }
+    ],
+    "dos": [
+      "Do pair every colour with a text label (method name, status code).",
+      "Do move the pixel landscape only in hard steps (steps()), and stop it under prefers-reduced-motion.",
+      "Do let the accent be the only thing that moves while a request is in flight."
+    ],
+    "donts": [
+      "Don't use emoji or Unicode glyphs as icons; Lucide at 13–16px, one stroke weight.",
+      "Don't use SF Mono outside code, URLs and keys."
+    ]
+  }
+}

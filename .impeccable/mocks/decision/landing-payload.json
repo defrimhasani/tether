@@ -1,0 +1,64 @@
+{
+  "title": "Tether landing page: choose the structure",
+  "question": "The visual world is fixed (Tether's Liquid Glass over the pixel landscape). These are three ways to build the page. Lock one, steer, or re-roll.",
+  "options": [
+    {
+      "id": "palette",
+      "label": "Press ⌘K",
+      "kicker": "THE ROLL",
+      "lineage": "Tether's own command palette",
+      "thesis": "The page is driven like the app: a glass command palette over the landscape is the hero and the navigation.",
+      "palette": ["#0a84ff", "#ececf0", "#1c1c1e", "#30d158", "#ff9f0a"],
+      "materials": ["liquid glass", "pixel landscape", "SF Pro + SF Mono"],
+      "viewport": "A large open palette centred over the day/night scenery; first row 'Download for macOS' is highlighted and Enter downloads. Rows for Windows, Linux and each tour filter as you type.",
+      "risk": "A visitor who never types sees a list before they see the product window.",
+      "wireframe": {"cols": 12, "rows": 10, "regions": [
+        {"label": "nav: logo + GitHub", "x": 0, "y": 0, "w": 12, "h": 1},
+        {"label": "headline", "x": 3, "y": 1, "w": 6, "h": 1},
+        {"label": "⌘K palette (download rows)", "x": 3, "y": 2, "w": 6, "h": 5, "accent": true},
+        {"label": "pixel landscape", "x": 0, "y": 7, "w": 12, "h": 1},
+        {"label": "tour: chaining (window replica)", "x": 0, "y": 8, "w": 12, "h": 2}
+      ]}
+    },
+    {
+      "id": "split",
+      "label": "Request ↔ Response",
+      "lineage": "Tether's split request/response panes",
+      "thesis": "Every section is a request on the left and Tether's real answer on the right, joined by a {{@reference}}.",
+      "palette": ["#0a84ff", "#f7f7f9", "#1e1e20", "#da8fff", "#30d158"],
+      "materials": ["liquid glass", "pixel landscape", "SF Mono response bodies"],
+      "viewport": "Left: URL capsule 'GET tether.app/download' with Send. Right: the response pane, 200 OK, whose JSON lists the installers as working download links.",
+      "risk": "The pairing repeats each section and could feel mechanical; it stacks on phones.",
+      "wireframe": {"cols": 12, "rows": 10, "regions": [
+        {"label": "nav", "x": 0, "y": 0, "w": 12, "h": 1},
+        {"label": "request: GET /download + Send", "x": 0, "y": 1, "w": 6, "h": 4},
+        {"label": "response: installers JSON", "x": 6, "y": 1, "w": 6, "h": 4, "accent": true},
+        {"label": "{{@ref}} link", "x": 5, "y": 5, "w": 2, "h": 1},
+        {"label": "request: chaining", "x": 0, "y": 6, "w": 6, "h": 3},
+        {"label": "response: resolved token", "x": 6, "y": 6, "w": 6, "h": 3},
+        {"label": "pixel landscape", "x": 0, "y": 9, "w": 12, "h": 1}
+      ]}
+    },
+    {
+      "id": "send",
+      "label": "Send it",
+      "lineage": "Tether's URL capsule",
+      "thesis": "The hero is one giant URL capsule; pressing Send runs a real request and the full Tether window unfolds with the answer.",
+      "palette": ["#0a84ff", "#ffffff", "#1c1c1e", "#30d158", "#409cff"],
+      "materials": ["liquid glass", "pixel landscape", "live fetch"],
+      "viewport": "Huge glass URL bar with method and accent Send, the plane gliding above; on Send the pulse plays, status/time/size land and a window replica grows below with download buttons in its response.",
+      "risk": "Leans on a live third-party API; needs a canned fallback when offline.",
+      "wireframe": {"cols": 12, "rows": 10, "regions": [
+        {"label": "nav", "x": 0, "y": 0, "w": 12, "h": 1},
+        {"label": "headline", "x": 2, "y": 1, "w": 8, "h": 1},
+        {"label": "giant URL capsule + Send", "x": 1, "y": 2, "w": 10, "h": 1, "accent": true},
+        {"label": "Tether window replica (unfolds)", "x": 1, "y": 3, "w": 10, "h": 5},
+        {"label": "download row", "x": 3, "y": 8, "w": 6, "h": 1},
+        {"label": "pixel landscape", "x": 0, "y": 9, "w": 12, "h": 1}
+      ]}
+    }
+  ],
+  "reroll": true,
+  "steer": true,
+  "buildPath": {"value": "code", "toggle": false}
+}

@@ -1,0 +1,308 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Tether: the HTTP workbench that feels like your Mac</title>
+  <meta name="description" content="Tether is a local-first HTTP client for macOS, Windows and Linux. Send requests, read responses, and reuse any response field in the next request. No account required.">
+  <meta name="color-scheme" content="light dark">
+  <meta name="theme-color" content="#c9dcf2" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#070b18" media="(prefers-color-scheme: dark)">
+  <meta property="og:title" content="Tether">
+  <meta property="og:description" content="A local-first HTTP workbench. Chain requests, keep your workspace as files, drive it from the keyboard.">
+  <meta property="og:type" content="website">
+  <link rel="icon" href="favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="scenery.css">
+  <link rel="stylesheet" href="styles.css">
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <defs>
+      <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+      <symbol id="i-link" viewBox="0 0 24 24"><path d="M9 17H7A5 5 0 0 1 7 7h2"/><path d="M15 7h2a5 5 0 1 1 0 10h-2"/><path d="M8 12h8"/></symbol>
+      <symbol id="i-folder" viewBox="0 0 24 24"><path d="M9 20H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h3.9a2 2 0 0 1 1.69.9l.81 1.2a2 2 0 0 0 1.67.9H20a2 2 0 0 1 2 2v5"/><circle cx="13" cy="12" r="2"/><path d="M18 19c-2.8 0-5-2.2-5-5v8"/><circle cx="20" cy="19" r="2"/></symbol>
+      <symbol id="i-command" viewBox="0 0 24 24"><path d="M15 6v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3V6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3"/></symbol>
+      <symbol id="i-bot" viewBox="0 0 24 24"><path d="M12 8V4H8"/><rect width="16" height="12" x="4" y="8" rx="2"/><path d="M2 14h2M20 14h2M15 13v2M9 13v2"/></symbol>
+      <symbol id="i-github" viewBox="0 0 24 24"><path d="M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65-.17.6-.22 1.23-.15 1.85v4"/><path d="M9 18c-4.51 2-5-2-7-2"/></symbol>
+      <symbol id="i-enter" viewBox="0 0 24 24"><path d="M9 10l-5 5 5 5"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></symbol>
+      <symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></symbol>
+      <symbol id="i-up" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7"/><path d="M12 19V5"/></symbol>
+      <symbol id="i-layers" viewBox="0 0 24 24"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83Z"/><path d="m22 17.65-9.17 4.16a2 2 0 0 1-1.66 0L2 17.65"/><path d="m22 12.65-9.17 4.16a2 2 0 0 1-1.66 0L2 12.65"/></symbol>
+      <symbol id="i-lock" viewBox="0 0 24 24"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+      <symbol id="i-terminal" viewBox="0 0 24 24"><path d="m4 17 6-6-6-6"/><path d="M12 19h8"/></symbol>
+      <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+      <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+      <symbol id="i-file" viewBox="0 0 24 24"><path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/></symbol>
+      <symbol id="i-dir" viewBox="0 0 24 24"><path d="M20 20a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.9a2 2 0 0 1-1.69-.9L9.6 3.9A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2Z"/></symbol>
+      <symbol id="b-apple" viewBox="0 0 24 24"><path d="M12.15 6.9c-.95 0-2.42-1.08-3.96-1.04-2.04.03-3.91 1.18-4.96 3.01-2.12 3.68-.55 9.1 1.52 12.09 1.01 1.45 2.2 3.09 3.79 3.04 1.52-.07 2.09-.99 3.93-.99 1.83 0 2.35.99 3.96.95 1.64-.03 2.68-1.48 3.68-2.95 1.16-1.69 1.64-3.33 1.66-3.42-.04-.01-3.18-1.22-3.22-4.86-.03-3.04 2.48-4.49 2.6-4.56-1.43-2.09-3.62-2.32-4.39-2.38-2-.16-3.68 1.09-4.61 1.09Zm3.38-3.07c.84-1.01 1.4-2.43 1.25-3.83-1.21.05-2.66.8-3.53 1.82-.78.9-1.45 2.34-1.27 3.71 1.34.1 2.71-.69 3.55-1.7Z"/></symbol>
+      <symbol id="b-windows" viewBox="0 0 24 24"><path d="M3 3h8.5v8.5H3zM12.5 3H21v8.5h-8.5zM3 12.5h8.5V21H3zM12.5 12.5H21V21h-8.5z"/></symbol>
+      <symbol id="b-linux" viewBox="0 0 24 24"><path fill-rule="evenodd" d="M12 1.5c-2.3 0-3.7 1.9-3.7 4.4 0 1.3.3 2.3-.4 3.7C6.8 11.8 4.8 14.3 4.8 17c0 1 .3 1.9.8 2.5l-1.3 1.6c-.3.4 0 .9.5.9h4.1l1-1.2c.7.1 1.3.2 2.1.2s1.4-.1 2.1-.2l1 1.2h4.1c.5 0 .8-.5.5-.9l-1.3-1.6c.5-.6.8-1.5.8-2.5 0-2.7-2-5.2-3.1-7.4-.7-1.4-.4-2.4-.4-3.7 0-2.5-1.4-4.4-3.7-4.4Zm0 8.6c-2 0-3.6 2.7-3.6 5.7s1.6 4.2 3.6 4.2 3.6-1.2 3.6-4.2-1.6-5.7-3.6-5.7Zm-1.4-4.7a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6Zm2.8 0a.8.8 0 1 0 0 1.6.8.8 0 0 0 0-1.6Z"/></symbol>
+    </defs>
+  </svg>
+
+  <a class="skip" href="#download">Skip to downloads</a>
+
+  <header class="bar" data-bar>
+    <a class="brand" href="#top" aria-label="Tether home"><span class="mark" aria-hidden="true"></span><span>Tether</span></a>
+    <nav class="bar-links" aria-label="Primary">
+      <button class="bar-k" type="button" data-open-palette aria-label="Open command palette"><svg class="i"><use href="#i-search"/></svg><span>Search</span><kbd data-mod>⌘K</kbd></button>
+      <a class="bar-gh" href="https://github.com/defrimhasani/tether" aria-label="Tether on GitHub"><svg class="i"><use href="#i-github"/></svg></a>
+    </nav>
+  </header>
+
+  <main id="top">
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="land" aria-hidden="true">
+        <div class="stars"></div>
+        <div class="orb"></div>
+        <div class="clouds"></div>
+        <div class="range far"></div>
+        <div class="range mid"></div>
+        <div class="range near"></div>
+        <div class="plane"></div>
+      </div>
+
+      <div class="hero-inner">
+        <h1 id="hero-title">The HTTP workbench that feels like your&nbsp;Mac.</h1>
+        <p class="lede">Chain requests, keep your workspace as plain files, and never make an account.</p>
+
+        <div class="palette" data-palette="hero">
+          <label class="pal-search">
+            <svg class="i"><use href="#i-search"/></svg>
+            <input type="text" placeholder="Search or type a command" aria-label="Search commands" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="pal-hero-list" aria-autocomplete="list">
+            <kbd class="pal-k" data-mod>⌘K</kbd>
+          </label>
+          <div class="pal-list" id="pal-hero-list" role="listbox" aria-label="Commands"></div>
+          <div class="pal-foot" aria-hidden="true">
+            <span><kbd>↑</kbd><kbd>↓</kbd> navigate</span>
+            <span><kbd>↵</kbd> open</span>
+            <span><kbd>esc</kbd> clear</span>
+          </div>
+        </div>
+        <p class="pal-status" data-status role="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="sect chain" id="chain" aria-labelledby="chain-title">
+      <div class="copy">
+        <h2 id="chain-title">Reuse any response field in the next&nbsp;request.</h2>
+        <p>Click a value in a response and Tether writes a reference for it. The next request resolves it from the latest run, and Tether won’t send while a reference is unresolved.</p>
+        <div class="steps" role="tablist" aria-label="Chaining demo">
+          <button role="tab" aria-selected="true" data-step="0">Send</button>
+          <button role="tab" aria-selected="false" data-step="1">Pick a field</button>
+          <button role="tab" aria-selected="false" data-step="2">Reuse it</button>
+        </div>
+      </div>
+
+      <figure class="win" data-demo data-state="0" aria-label="Tether window showing the demo workspace">
+        <aside class="w-side">
+          <div class="w-lights" aria-hidden="true"><i></i><i></i><i></i></div>
+          <div class="w-search"><svg class="i"><use href="#i-search"/></svg>Search</div>
+          <p class="w-label">Example (httpbin.org)</p>
+          <ul class="w-reqs">
+            <li data-req="login"><b class="m-post">POST</b>Create session<span class="live" aria-hidden="true"></span></li>
+            <li data-req="profile"><b class="m-get">GET</b>Fetch profile<span class="live" aria-hidden="true"></span></li>
+            <li><b class="m-get">GET</b>Simulate server error</li>
+          </ul>
+        </aside>
+        <div class="w-main">
+          <div class="w-tool">
+            <span class="w-title" data-title>Create session</span>
+            <span class="w-env glass"><svg class="i"><use href="#i-layers"/></svg>Demo</span>
+          </div>
+          <div class="w-url glass">
+            <b class="w-method" data-method>POST</b>
+            <span class="w-addr" data-url><span class="t-var">{{base_url}}</span>/post</span>
+            <span class="w-send"><span>Send</span><svg class="i"><use href="#i-up"/></svg></span>
+          </div>
+          <div class="w-panes">
+            <div class="w-pane">
+              <div class="w-tabs"><span class="on">Headers</span><span>Body</span></div>
+              <div class="w-kv" data-req-pane>
+                <div class="kv"><span>Content-Type</span><span>application/json</span></div>
+                <pre class="w-code">{
+  <span class="j-key">"user"</span>: <span class="j-str">"demo-user"</span>,
+  <span class="j-key">"token"</span>: <span class="j-str">"example-token-0000"</span>
+}</pre>
+              </div>
+            </div>
+            <div class="w-pane w-res">
+              <div class="w-sum" data-sum>
+                <span class="w-status">200 OK</span><span><small>Time</small>142 ms</span><span><small>Size</small>486 B</span>
+              </div>
+              <div class="w-wait" aria-hidden="true"><span class="pulse"></span>Sending…</div>
+              <pre class="w-body" data-body></pre>
+              <div class="w-insp glass" data-insp>
+                <code>{{@create_session.body.json.token}}</code>
+                <span class="w-use">Use in request</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </figure>
+      <p class="demo-note">Recreated from Tether’s built-in demo workspace, which calls httpbin.org.</p>
+    </section>
+
+    <section class="sect files" id="files" aria-labelledby="files-title">
+      <div class="copy">
+        <h2 id="files-title">Your workspace is a folder you can&nbsp;commit.</h2>
+        <p>Save to a folder and every collection, request and environment becomes a small JSON file. Review changes in a pull request, and pull a teammate’s edits; Tether picks them up when the window regains focus.</p>
+        <p class="aside-line"><svg class="i"><use href="#i-lock"/></svg>Secrets never touch the folder. They stay in the system keychain.</p>
+      </div>
+      <figure class="finder" aria-label="A Tether workspace folder">
+        <div class="f-tree" role="tree" aria-label="Workspace files">
+          <p class="f-root"><svg class="i"><use href="#i-dir"/></svg>payments-api</p>
+          <ul>
+            <li><svg class="i"><use href="#i-file"/></svg>tether.json</li>
+            <li class="dir"><svg class="i"><use href="#i-dir"/></svg>collections</li>
+            <li class="in2 dir"><svg class="i"><use href="#i-dir"/></svg>example-httpbin-org</li>
+            <li class="in3"><svg class="i"><use href="#i-file"/></svg>collection.json</li>
+            <li class="in3 sel"><svg class="i"><use href="#i-file"/></svg>create-session.json</li>
+            <li class="in3"><svg class="i"><use href="#i-file"/></svg>fetch-profile.json</li>
+            <li class="dir"><svg class="i"><use href="#i-dir"/></svg>environments</li>
+            <li class="in2"><svg class="i"><use href="#i-file"/></svg>demo.json</li>
+            <li class="dim"><svg class="i"><use href="#i-dir"/></svg>.tether <em>git-ignored</em></li>
+          </ul>
+        </div>
+        <pre class="f-file"><span class="f-name">collections/example-httpbin-org/create-session.json</span>
+{
+  <span class="j-key">"id"</span>: <span class="j-str">"k3v9x2"</span>,
+  <span class="j-key">"name"</span>: <span class="j-str">"Create session"</span>,
+  <span class="j-key">"method"</span>: <span class="j-str">"POST"</span>,
+  <span class="j-key">"url"</span>: <span class="j-str">"{{base_url}}/post"</span>,
+  <span class="j-key">"headers"</span>: [
+    {
+      <span class="j-key">"key"</span>: <span class="j-str">"Content-Type"</span>,
+      <span class="j-key">"value"</span>: <span class="j-str">"application/json"</span>,
+      <span class="j-key">"enabled"</span>: <span class="j-bool">true</span>
+    }
+  ],
+  <span class="j-key">"body"</span>: [
+    <span class="j-str">"{"</span>,
+    <span class="j-str">"  \"user\": \"demo-user\","</span>,
+    <span class="j-str">"  \"token\": \"example-token-0000\""</span>,
+    <span class="j-str">"}"</span>
+  ]
+}</pre>
+      </figure>
+    </section>
+
+    <section class="sect keys" id="keys" aria-labelledby="keys-title">
+      <div class="copy">
+        <h2 id="keys-title">Every action has a key.</h2>
+        <p data-keys-copy>Send, cancel, save and jump anywhere without reaching for the mouse. Press one of these shortcuts here and watch the menu answer.</p>
+      </div>
+      <div class="desk desk-menu"><div class="land desk-land" aria-hidden="true"><div class="stars"></div><div class="range far"></div><div class="range mid"></div><div class="range near"></div></div>
+      <div class="menubar" aria-label="Tether menu, as it appears on macOS">
+        <div class="mb-strip" aria-hidden="true"><b>Tether</b><span>File</span><span class="open">Request</span><span>View</span><span>Window</span></div>
+        <ul class="menu" data-menu>
+          <li data-key="Enter"><span>Send</span><kbd data-mod>⌘↵</kbd></li>
+          <li data-key="."><span>Cancel</span><kbd data-mod>⌘.</kbd></li>
+          <li data-key="s"><span>Save</span><kbd data-mod>⌘S</kbd></li>
+          <li class="sep" role="separator"></li>
+          <li data-key="n"><span>New Request</span><kbd data-mod>⌘N</kbd></li>
+          <li data-key="e"><span>Environments…</span><kbd data-mod>⌘E</kbd></li>
+          <li data-key="k"><span>Command Palette…</span><kbd data-mod>⌘K</kbd></li>
+          <li data-key=","><span>Settings…</span><kbd data-mod>⌘,</kbd></li>
+        </ul>
+      </div>
+      </div>
+    </section>
+
+    <section class="sect agents" id="agents" aria-labelledby="agents-title">
+      <div class="copy">
+        <h2 id="agents-title">Agents run your requests. They never see your&nbsp;keys.</h2>
+        <p>Tether speaks MCP, so Claude, Cursor or OpenCode can call your saved requests by name. Tether fills in auth from your environment and keychain, runs the request, and hands back a trimmed result.</p>
+        <ul class="rules">
+          <li><b>Off by default.</b> Grant access per request and per environment.</li>
+          <li><b>Reads run, writes ask.</b> POST, PUT, PATCH and DELETE wait for your click.</li>
+          <li><b>Nothing hidden.</b> Every agent run lands in History with the agent’s name.</li>
+        </ul>
+      </div>
+      <div class="desk desk-sheet"><div class="land desk-land" aria-hidden="true"><div class="stars"></div><div class="range far"></div><div class="range mid"></div><div class="range near"></div></div>
+      <figure class="sheet glass" aria-label="Tether approval sheet">
+        <p class="sh-from"><svg class="i"><use href="#i-bot"/></svg>Claude wants to run a request</p>
+        <div class="sh-req"><b class="m-post">POST</b><span>Create session</span></div>
+        <dl class="sh-meta">
+          <dt>URL</dt><dd><code>https://httpbin.org/post</code></dd>
+          <dt>Environment</dt><dd>Demo</dd>
+          <dt>Agent values</dt><dd><code>user = "demo-user"</code></dd>
+        </dl>
+        <div class="sh-actions">
+          <button type="button" class="ghost" data-sheet="deny">Deny</button>
+          <button type="button" class="ghost" data-sheet="session">Allow for session</button>
+          <button type="button" class="primary" data-sheet="once">Allow once</button>
+        </div>
+        <p class="sh-result" data-sheet-result role="status" aria-live="polite" hidden></p>
+      </figure>
+      </div>
+    </section>
+
+    <section class="get" id="download" aria-labelledby="get-title">
+      <div class="land land-low" aria-hidden="true">
+        <div class="stars"></div>
+        <div class="range far"></div>
+        <div class="range mid"></div>
+        <div class="range near"></div>
+      </div>
+      <div class="get-inner">
+        <h2 id="get-title">Get Tether.</h2>
+        <p class="lede">Version <span data-version>0.1.0</span>. No account, no sign-in.</p>
+        <div class="installers glass" role="list">
+          <div class="inst" role="listitem" data-os="mac">
+            <svg class="b"><use href="#b-apple"/></svg>
+            <div><b>macOS</b><small>Universal: Apple Silicon and Intel</small></div>
+            <a class="dl primary" href="#" data-asset="Tether-macOS-universal.dmg"><svg class="i"><use href="#i-download"/></svg>.dmg</a>
+          </div>
+          <div class="inst" role="listitem" data-os="win">
+            <svg class="b"><use href="#b-windows"/></svg>
+            <div><b>Windows</b><small>x64</small></div>
+            <a class="dl primary" href="#" data-asset="Tether-Windows-x64-setup.exe"><svg class="i"><use href="#i-download"/></svg>.exe</a>
+            <a class="dl" href="#" data-asset="Tether-Windows-x64.msi">.msi</a>
+          </div>
+          <div class="inst" role="listitem" data-os="linux">
+            <svg class="b"><use href="#b-linux"/></svg>
+            <div><b>Linux</b><small>x86_64</small></div>
+            <a class="dl primary" href="#" data-asset="Tether-Linux-x86_64.AppImage"><svg class="i"><use href="#i-download"/></svg>.AppImage</a>
+            <a class="dl" href="#" data-asset="Tether-Linux-amd64.deb">.deb</a>
+          </div>
+        </div>
+
+        <details class="notes glass" data-notes open>
+          <summary>First launch: these builds aren’t signed yet</summary>
+          <div class="note" data-os="mac">
+            <p><b>macOS.</b> This build isn’t notarized yet, so the first time, right-click Tether in Applications and choose <b>Open</b>. Or clear the quarantine flag:</p>
+            <div class="cmd"><code>xattr -dr com.apple.quarantine /Applications/Tether.app</code><button type="button" class="cp" data-copy aria-label="Copy command"><svg class="i"><use href="#i-copy"/></svg></button></div>
+          </div>
+          <div class="note" data-os="win">
+            <p><b>Windows.</b> If SmartScreen appears, choose <b>More info</b>, then <b>Run anyway</b>.</p>
+          </div>
+          <div class="note" data-os="linux">
+            <p><b>Linux.</b> Make the AppImage executable, then run it:</p>
+            <div class="cmd"><code>chmod +x Tether-Linux-x86_64.AppImage</code><button type="button" class="cp" data-copy aria-label="Copy command"><svg class="i"><use href="#i-copy"/></svg></button></div>
+          </div>
+        </details>
+
+        <p class="src">Prefer to build it yourself? <a href="https://github.com/defrimhasani/tether">Get the source on GitHub</a> and run <code>pnpm tauri build</code>.</p>
+      </div>
+      <footer class="foot">
+        <span class="brand"><span class="mark" aria-hidden="true"></span>Tether</span>
+        <a href="https://github.com/defrimhasani/tether/releases">Releases</a>
+        <a href="https://github.com/defrimhasani/tether">GitHub</a>
+      </footer>
+    </section>
+  </main>
+
+  <dialog class="pal-dialog" data-dialog aria-label="Command palette">
+    <div class="palette" data-palette="dialog">
+      <label class="pal-search">
+        <svg class="i"><use href="#i-search"/></svg>
+        <input type="text" placeholder="Search or type a command" aria-label="Search commands" autocomplete="off" spellcheck="false" role="combobox" aria-expanded="true" aria-controls="pal-dialog-list" aria-autocomplete="list">
+        <kbd class="pal-k">esc</kbd>
+      </label>
+      <div class="pal-list" id="pal-dialog-list" role="listbox" aria-label="Commands"></div>
+    </div>
+  </dialog>
+</body>
+</html>
