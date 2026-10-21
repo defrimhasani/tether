@@ -22,6 +22,8 @@ import { RpcError, METHOD_NOT_FOUND, INVALID_PARAMS } from "./agent/mcp";
 import { useAgent } from "./agent/useAgent";
 import { SettingsPanel } from "./SettingsPanel";
 import { useSettings } from "./settings";
+import { modKey } from "./platform";
+import { RocketGame } from "./RocketGame";
 import { EMPTY_POLICY, allowed as agentAllowed, dependencies as agentDependencies, inputsFor, isWrite, toolName, type AgentPolicy } from "./agent/policy";
 import { redact, redactHeaders, resolveWithInputs, validateInputs } from "./agent/safety";
 import { requestSummary, resolveEnvironment, resolveRequest, shapeResponse, toolList } from "./agent/tools";
@@ -380,7 +382,7 @@ export default function App() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!e.metaKey) return;
+      if (!modKey(e)) return;
       if (e.key === "Enter" && req) { e.preventDefault(); sendRequest(req); }
       else if (e.key === "." && pending) { e.preventDefault(); cancel(pending.sendId); }
       else if (e.key === "s") { e.preventDefault(); save(); }
@@ -556,6 +558,7 @@ export default function App() {
             <h1>Start with a request</h1>
             <p>Everything stays on this Mac. No account required.</p>
             <button className="primary" onClick={() => addRequest()}><SquarePen size={14} /> New request <kbd>⌘N</kbd></button>
+            <RocketGame />
           </div>
         ) : (
           <>
