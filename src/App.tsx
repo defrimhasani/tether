@@ -9,6 +9,7 @@ import {
 } from "./refs";
 import { cancel, send } from "./http";
 import { BodyView, HeadersView } from "./ResponseBody";
+import { Scenery } from "./Scenery";
 import { BodyEditor } from "./BodyEditor";
 import { maskHeader } from "./markup";
 import {
@@ -468,10 +469,11 @@ export default function App() {
                         onDragEnd={() => { drag.current = null; setDropAt(null); }}
                         {...dragProps(r.id, c.requests.indexOf(r))}
                       >
-                        <button className="req-item" aria-current={r.id === activeId} onClick={() => open(r.id)}
+                        <button className={`req-item${pending?.requestId === r.id ? " sending" : ""}`} aria-current={r.id === activeId} onClick={() => open(r.id)}
                           onContextMenu={(e) => { e.preventDefault(); setMenu(r.id); }}>
                           <span className={`m m-${r.method}`}>{r.method === "DELETE" ? "DEL" : r.method === "OPTIONS" ? "OPT" : r.method}</span>
                           <span className="name">{(drafts[r.id] ?? r).name}</span>
+                          {pending?.requestId === r.id && <span className="live" title="Sending" aria-label="Sending" />}
                           {drafts[r.id] && <span className="dot" title="Unsaved changes" aria-label="Unsaved" />}
                         </button>
                         <button className="icon row-menu" aria-label={`${r.name} actions`} aria-expanded={menu === r.id} onClick={() => setMenu(menu === r.id ? null : r.id)}><Ellipsis size={14} /></button>
@@ -520,6 +522,7 @@ export default function App() {
       </aside>
 
       <main className="main">
+        <Scenery />
         {notice && (
           <div className={`banner ${notice.tone}`} role={notice.tone === "error" ? "alert" : "status"}>
             {notice.text}
@@ -556,7 +559,7 @@ export default function App() {
           </div>
         ) : (
           <>
-            <form className="urlbar glass" onSubmit={(e) => { e.preventDefault(); sendRequest(req); }}>
+            <form className={`urlbar glass${pending?.requestId === req.id ? " sending" : ""}`} onSubmit={(e) => { e.preventDefault(); sendRequest(req); }}>
               <select className={`method m-${req.method}`} value={req.method} onChange={(e) => edit({ method: e.target.value as Method })} aria-label="Method">
                 {METHODS.map((m) => <option key={m}>{m}</option>)}
               </select>
@@ -846,7 +849,7 @@ function ResponseView(props: {
   const [tab, setTab] = useState<"body" | "headers">("body");
   const res = entry?.response;
 
-  if (loading) return <div className="state"><div className="spinner" aria-hidden /> <p>Sending…</p></div>;
+  if (loading) return <div className="state"><div className="pulse" aria-hidden /> <p>Sending…</p></div>;
   if (!entry) return <div className="state"><p className="muted">Send the request to see its response here.</p><p className="muted small">Select any response field to reuse it in another request.</p></div>;
 
   if (entry.error) {
