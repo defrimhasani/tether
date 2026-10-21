@@ -2,6 +2,10 @@
 
 :root {
   color-scheme: light dark;
+  /* Set from Settings → Transparency (see src/settings.ts). */
+  --sidebar-a: 0.72;
+  --glass-a: 0.62;
+  --glass-strong-a: 0.82;
   --accent: #0a84ff;
 
   --font: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -11,11 +15,11 @@
   --window: #ececf0;
   --canvas: #ffffff;
   --canvas-2: #f7f7f9;
-  --glass: rgb(255 255 255 / 0.62);
-  --glass-strong: rgb(255 255 255 / 0.82);
+  --glass: rgb(255 255 255 / var(--glass-a));
+  --glass-strong: rgb(255 255 255 / var(--glass-strong-a));
   --glass-edge: rgb(0 0 0 / 0.07);
   --glass-hi: rgb(255 255 255 / 0.9);
-  --sidebar: rgb(246 246 248 / 0.72);
+  --sidebar: rgb(246 246 248 / var(--sidebar-a));
   --fill: rgb(120 120 128 / 0.12);
   --fill-2: rgb(120 120 128 / 0.07);
   --hover: rgb(0 0 0 / 0.045);
@@ -64,11 +68,11 @@
     --window: #1c1c1e;
     --canvas: #1e1e20;
     --canvas-2: #252528;
-    --glass: rgb(58 58 62 / 0.55);
-    --glass-strong: rgb(52 52 56 / 0.85);
+    --glass: rgb(58 58 62 / var(--glass-a));
+    --glass-strong: rgb(52 52 56 / var(--glass-strong-a));
     --glass-edge: rgb(255 255 255 / 0.1);
     --glass-hi: rgb(255 255 255 / 0.14);
-    --sidebar: rgb(38 38 42 / 0.62);
+    --sidebar: rgb(38 38 42 / var(--sidebar-a));
     --fill: rgb(120 120 128 / 0.24);
     --fill-2: rgb(120 120 128 / 0.14);
     --hover: rgb(255 255 255 / 0.06);
@@ -96,6 +100,8 @@ html, body, #root { height: 100%; }
 body { margin: 0; overflow: hidden; background: var(--window); user-select: none; -webkit-user-select: none; cursor: default; }
 /* Desktop: the window itself is transparent so the native material shows through. */
 html.native body { background: transparent; }
+/* Fully solid: nothing should show the desktop, not even the margin around the sidebar. */
+html.native.solid body { background: var(--window); }
 /* Browser preview: a soft backdrop stands in for the desktop behind the window. */
 html:not(.native) body {
   background:
@@ -728,3 +734,22 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .approval-details dd { margin: 0; min-width: 0; }
 .approval-details code { display: block; overflow-wrap: anywhere; white-space: pre-wrap; background: var(--canvas); }
 .approval-details pre { margin: 0; padding: 8px; border-radius: 7px; background: var(--canvas); box-shadow: 0 0 0 .5px var(--sep); font: 11px/1.45 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+
+/* Settings */
+.modal.settings { grid-template-columns: 1fr; grid-template-rows: 1fr auto; width: min(560px, 94vw); height: auto; max-height: 82vh; }
+.modal.settings .modal-foot { padding: 12px 20px 16px; border-top: 0.5px solid var(--sep); }
+.setting-row { align-items: flex-start; }
+.setting-label { min-width: 0; }
+.setting-label label { cursor: default; }
+.setting-value { min-width: 44px; text-align: right; font: 600 13px var(--font); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+.slider-row { display: grid; grid-template-columns: auto 1fr auto; gap: 12px; align-items: center; margin: 12px 4px 10px; }
+.settings input[type="range"] { -webkit-appearance: none; appearance: none; height: 22px; background: transparent; margin: 0; width: 100%; }
+.settings input[type="range"]::-webkit-slider-runnable-track { height: 4px; border-radius: 999px; background: linear-gradient(to right, var(--accent) 0 var(--fill-pct, 50%), var(--fill) var(--fill-pct, 50%) 100%); }
+.settings input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; margin-top: -8px; border-radius: 50%; background: white; box-shadow: 0 0 0 0.5px rgb(0 0 0 / 0.15), 0 2px 6px rgb(0 0 0 / 0.3); transition: transform 120ms var(--ease); }
+.settings input[type="range"]:active::-webkit-slider-thumb { transform: scale(1.08); }
+.settings input[type="range"]:focus-visible { outline: 3px solid color-mix(in srgb, var(--accent) 45%, transparent); outline-offset: 4px; border-radius: 6px; }
+.settings input[type="range"]:disabled { opacity: 0.4; }
+.settings .note { margin: 6px 0 10px; }
+.side-foot { display: flex; align-items: center; gap: 4px; }
+.side-foot .folder { flex: 1; min-width: 0; width: auto; }
+.side-foot .tool { flex: none; width: 28px; }

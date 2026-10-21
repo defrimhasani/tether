@@ -48,3 +48,7 @@ Lucide, 13–16px, a single stroke weight. No emoji or Unicode glyphs as icons.
 ## Motion
 
 One family: `--ease` = `cubic-bezier(0.16, 1, 0.3, 1)`. Floating glass enters with `glass-in`; buttons press to scale 0.96–0.97. Everything collapses to near-instant under `prefers-reduced-motion`.
+
+## Transparency setting
+
+Settings (⌘,) → Appearance → **Transparency** (0–100%, default 45%) scales the opacity of the sidebar, glass controls and floating menus through `--sidebar-a`, `--glass-a` and `--glass-strong-a` (set in `src/settings.ts`). Even at 100% surfaces keep at least 38% (sidebar and controls) or 60% (menus) opacity for legibility. At 0% the page gets an opaque backdrop (`html.solid`) and the native window material is removed. macOS "Reduce transparency" always forces solid and disables the slider.

@@ -9,6 +9,7 @@
     "core:default",
     "dialog:default",
     "core:window:allow-start-dragging",
-    "opener:default"
+    "opener:default",
+    "core:window:allow-set-effects"
   ]
 }
