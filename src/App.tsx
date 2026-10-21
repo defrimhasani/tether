@@ -12,13 +12,15 @@ import { BodyView, HeadersView } from "./ResponseBody";
 import { BodyEditor } from "./BodyEditor";
 import { maskHeader } from "./markup";
 import {
-  ArrowUp, Bot, Command, Ellipsis, Folder, FolderPlus, Layers, Plus, Search, SlidersHorizontal, Square, SquarePen, X,
+  ArrowUp, Bot, Command, Ellipsis, Folder, FolderPlus, Layers, Plus, Search, Settings as SettingsIcon, SlidersHorizontal, Square, SquarePen, X,
 } from "lucide-react";
 import * as ops from "./workspace-ops";
 import { useWorkspace } from "./useWorkspace";
 import { AgentPanel } from "./agent/AgentPanel";
 import { RpcError, METHOD_NOT_FOUND, INVALID_PARAMS } from "./agent/mcp";
 import { useAgent } from "./agent/useAgent";
+import { SettingsPanel } from "./SettingsPanel";
+import { useSettings } from "./settings";
 import { EMPTY_POLICY, allowed as agentAllowed, dependencies as agentDependencies, inputsFor, isWrite, toolName, type AgentPolicy } from "./agent/policy";
 import { redact, redactHeaders, resolveWithInputs, validateInputs } from "./agent/safety";
 import { requestSummary, resolveEnvironment, resolveRequest, shapeResponse, toolList } from "./agent/tools";
@@ -40,6 +42,8 @@ export default function App() {
   const [palette, setPalette] = useState(false);
   const [envOpen, setEnvOpen] = useState(false);
   const [agentOpen, setAgentOpen] = useState(false);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const appearance = useSettings();
   const [agentPolicy, setAgentPolicy] = useState<AgentPolicy>(() => {
     try { return JSON.parse(localStorage.getItem("tether.agent.policy") ?? "") as AgentPolicy; } catch { return EMPTY_POLICY; }
   });
@@ -382,6 +386,7 @@ export default function App() {
       else if (e.key === "k" || e.key === "p") { e.preventDefault(); setPalette((p) => !p); }
       else if (e.key === "n") { e.preventDefault(); addRequest(); }
       else if (e.key === "e") { e.preventDefault(); setEnvOpen(true); }
+      else if (e.key === ",") { e.preventDefault(); setSettingsOpen(true); }
       else if (e.altKey && activeId && (e.key === "ArrowUp" || e.key === "ArrowDown")) { e.preventDefault(); nudge(activeId, e.key === "ArrowUp" ? -1 : 1); }
     };
     window.addEventListener("keydown", onKey);
@@ -510,6 +515,7 @@ export default function App() {
               <span>{folder ? folder.split("/").pop() : "Save to folder…"}</span>
             </button>
           ) : <span className="folder muted"><Folder size={14} aria-hidden /><span>Stored in this browser</span></span>}
+          <button className="tool" aria-label="Settings" title="Settings (⌘,)" onClick={() => setSettingsOpen(true)}><SettingsIcon size={15} /></button>
         </footer>
       </aside>
 
@@ -606,6 +612,7 @@ export default function App() {
             ...(req ? [{ label: "Duplicate request", run: () => duplicate(req.id) }, { label: "Delete request…", run: () => removeRequest(req) }] : []),
             { label: "Edit environments", hint: "⌘E", run: () => setEnvOpen(true) },
             { label: "Agent access…", run: () => setAgentOpen(true) },
+            { label: "Settings…", hint: "⌘,", run: () => setSettingsOpen(true) },
             ...(canUseFolders ? [{ label: folder ? "Open another workspace folder…" : "Save workspace to folder…", run: openFolder }] : []),
             ...(folder ? [{ label: "Stop syncing with folder", run: closeFolder }] : []),
             ...ws.environments.map((e) => ({ label: `Switch environment: ${e.name}`, run: () => setWs((w) => ({ ...w, activeEnvId: e.id })) })),
@@ -615,6 +622,7 @@ export default function App() {
         />
       )}
       {confirm && <ConfirmDialog {...confirm} onClose={() => setConfirm(null)} />}
+      {settingsOpen && <SettingsPanel settings={appearance.settings} update={appearance.update} reduced={appearance.reduced} onClose={() => setSettingsOpen(false)} />}
       {agentOpen && <AgentPanel agent={agent} ws={ws} policy={agentPolicy} setPolicy={setAgentPolicy} activity={agentActivity} onClose={() => setAgentOpen(false)} />}
       {agentApproval && <AgentApprovalDialog approval={agentApproval} onResolve={(decision) => { agentApproval.resolve(decision); setAgentApproval(null); }} />}
       {envOpen && <EnvEditor ws={ws} setWs={setWs} onClose={() => setEnvOpen(false)} />}
