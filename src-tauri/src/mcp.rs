@@ -341,6 +341,12 @@ pub fn agent_autostart() -> bool {
   cfg!(debug_assertions) && std::env::var("TETHER_AGENT_AUTOSTART").is_ok_and(|v| v == "1")
 }
 
+/// Debug builds only: enables a saved read request for end-to-end MCP tests.
+#[tauri::command]
+pub fn agent_debug_grant() -> bool {
+  cfg!(debug_assertions) && std::env::var("TETHER_AGENT_DEBUG_GRANT").is_ok_and(|v| v == "1")
+}
+
 pub fn shutdown(state: &McpState) {
   stop(state);
 }
