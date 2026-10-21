@@ -975,7 +975,10 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 
 /* ——— API designer ——— */
 .design-ico { color: var(--ink-3); flex: none; margin-right: 8px; }
+.designs .req-item { height: auto; min-height: 44px; padding: 7px 10px; }
+.designs .req-item .name { display: grid; gap: 2px; line-height: 1.25; }
 .designs .req-item .name small { display: block; }
+.designs .req-row { margin-bottom: 2px; }
 .designer { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 14px 14px; gap: 8px; }
 .dz-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
 .dz-bar .spacer { flex: 1; }
@@ -1011,7 +1014,8 @@ input:focus-visible, textarea:focus-visible, select:focus-visible { outline: non
 .dz-item .mono { overflow: hidden; text-overflow: ellipsis; font-size: 12px; }
 .dz-dot { margin-left: auto; width: 6px; height: 6px; border-radius: 50%; background: var(--red); }
 .dz-section { display: flex; align-items: center; justify-content: space-between; margin: 14px 8px 4px; font-size: 11px; font-weight: 600; color: var(--ink-3); }
-.dz-tag { margin: 8px 8px 2px; font-size: 11px; color: var(--ink-3); }
+.dz-tag { display: flex; justify-content: space-between; margin: 10px 8px 2px; font-size: 11px; font-weight: 500; color: var(--ink-3); }
+.dz-tag span { font-variant-numeric: tabular-nums; color: var(--ink-4); }
 .dz-hint { margin: 4px 0 0; font-size: 12px; color: var(--ink-3); }
 .dz-hint.pad { padding: 0 8px; }
 .dz-add-row { display: flex; gap: 4px; padding: 0 4px 6px; }

@@ -132,7 +132,7 @@ function withPathParams(op: Obj, path: string, itemParams: unknown[]): Obj {
 export function addOperation(doc: Obj, method: OpMethod, path: string): Obj {
   const p = path.startsWith("/") ? path : `/${path}`;
   const item = obj(obj(doc.paths)[p]);
-  const op = withPathParams({ summary: "", responses: { "200": { description: "OK" } } }, p, arr(item.parameters));
+  const op = withPathParams({ responses: { "200": { description: "OK" } } }, p, arr(item.parameters));
   return setIn(doc, ["paths", p], { ...item, [method]: op });
 }
 

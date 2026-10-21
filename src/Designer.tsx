@@ -324,9 +324,10 @@ export function Designer({
     if (sel.kind === "schema" && !schemas.includes(sel.name)) setSel({ kind: "info" });
   }, [doc]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const UNTAGGED = "Untagged";
   const groups = useMemo(() => {
     const g = new Map<string, typeof ops>();
-    for (const o of ops) { const t = str(arr(o.op.tags)[0]) || "Endpoints"; g.set(t, [...(g.get(t) ?? []), o]); }
+    for (const o of ops) { const t = str(arr(o.op.tags)[0]) || UNTAGGED; g.set(t, [...(g.get(t) ?? []), o]); }
     return [...g];
   }, [ops]);
 
@@ -414,12 +415,12 @@ export function Designer({
           {ops.length === 0 && !adding && <p className="dz-hint pad">No endpoints yet.</p>}
           {groups.map(([tag, list]) => (
             <div key={tag}>
-              {groups.length > 1 && <p className="dz-tag">{tag}</p>}
+              {groups.length > 1 && <p className="dz-tag">{tag}<span>{list.length}</span></p>}
               {list.map((o) => {
                 const s: Sel = { kind: "op", method: o.method, path: o.path };
                 const broken = issues.some((i) => i.level === "error" && i.where.kind === "op" && i.where.method === o.method && i.where.path === o.path);
                 return (
-                  <button key={`${o.method} ${o.path}`} className="dz-item op" aria-current={sameSel(sel, s)} onClick={() => setSel(s)}>
+                  <button key={`${o.method} ${o.path}`} className="dz-item op" title={str(o.op.summary) || undefined} aria-current={sameSel(sel, s)} onClick={() => setSel(s)}>
                     <b className={`m m-${o.method.toUpperCase()}`}>{o.method === "delete" ? "DEL" : o.method.toUpperCase().slice(0, 4)}</b>
                     <span className="mono">{o.path}</span>{broken && <i className="dz-dot" title="Has errors" />}
                   </button>
