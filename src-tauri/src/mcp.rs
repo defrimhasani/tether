@@ -55,6 +55,14 @@ pub fn state_dir() -> PathBuf {
   let home = PathBuf::from(std::env::var_os("HOME").unwrap_or_default());
   if cfg!(target_os = "macos") {
     home.join("Library/Application Support/dev.tether.app")
+  } else if cfg!(windows) {
+    // Windows has no HOME; use the roaming app-data folder (`%APPDATA%`).
+    std::env::var_os("APPDATA")
+      .map(PathBuf::from)
+      .unwrap_or_else(|| {
+        PathBuf::from(std::env::var_os("USERPROFILE").unwrap_or_default()).join("AppData/Roaming")
+      })
+      .join("dev.tether.app")
   } else {
     std::env::var_os("XDG_DATA_HOME")
       .map(PathBuf::from)

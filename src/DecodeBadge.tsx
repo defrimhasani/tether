@@ -2,6 +2,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { Binary, Clock, ExternalLink, KeyRound, Link2, Plus } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { decodeValue, relativeTime, type Decoded } from "./decode";
+import { isMac, modKey } from "./platform";
 
 export async function openExternal(url: string) {
   if (isTauri()) {
@@ -115,7 +116,7 @@ export function DecodeBadge({ value, field = "", onNewRequest }: { value: unknow
   if (!d) return null;
   const { text, tone } = label(d, new Date());
   const Icon = ICONS[d.kind];
-  const title = d.kind === "time" ? fmt(d.date) : d.kind === "url" ? "Open or create a request (⌘-click opens in browser)" : "Show decoded value";
+  const title = d.kind === "time" ? fmt(d.date) : d.kind === "url" ? `Open or create a request (${isMac() ? "⌘" : "Ctrl"}-click opens in browser)` : "Show decoded value";
 
   return (
     <span className="decode" ref={ref}>
@@ -123,7 +124,7 @@ export function DecodeBadge({ value, field = "", onNewRequest }: { value: unknow
         className={`decode-badge ${d.kind} ${tone}`} title={title} aria-expanded={open} aria-label={`${d.kind} details`}
         onClick={(e) => {
           e.stopPropagation();
-          if (d.kind === "url" && e.metaKey) openExternal(d.url);
+          if (d.kind === "url" && modKey(e)) openExternal(d.url);
           else toggle();
         }}
       >

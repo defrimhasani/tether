@@ -1,4 +1,5 @@
 import { RotateCcw, SlidersHorizontal } from "lucide-react";
+import { vibrancyUnavailable } from "./platform";
 import { DEFAULT_SETTINGS, type Settings } from "./settings";
 
 export function SettingsPanel({ settings, update, reduced, onClose }: {
@@ -38,7 +39,11 @@ export function SettingsPanel({ settings, update, reduced, onClose }: {
               <span className="muted small">Clear</span>
             </div>
             {reduced && (
-              <p className="note">macOS “Reduce transparency” is on (System Settings → Accessibility → Display), so Tether stays solid.</p>
+              <p className="note">
+                {vibrancyUnavailable()
+                  ? "Window transparency is only available on macOS, so Tether stays solid here."
+                  : "macOS “Reduce transparency” is on (System Settings → Accessibility → Display), so Tether stays solid."}
+              </p>
             )}
             <button className="ghost small" onClick={() => update({ transparency: DEFAULT_SETTINGS.transparency })} disabled={reduced || settings.transparency === DEFAULT_SETTINGS.transparency}>
               <RotateCcw size={12} /> Reset to default

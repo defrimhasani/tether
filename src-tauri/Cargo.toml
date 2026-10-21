@@ -26,7 +26,7 @@ tauri-plugin-log = "2"
 tokio = { version = "1.54.0", features = ["time", "sync", "macros", "net", "io-std", "io-util", "rt"] }
 tokio-util = "0.7.20"
 reqwest = { version = "0.13.5", default-features = false, features = ["rustls", "json", "gzip", "brotli"] }
-keyring = { version = "3", features = ["apple-native"] }
+keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service", "crypto-rust"] }
 tauri-plugin-dialog = "2"
 base64 = "0.23.1"
 tauri-plugin-opener = "2"

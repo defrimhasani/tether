@@ -1,5 +1,6 @@
 import { isTauri } from "@tauri-apps/api/core";
 import { useEffect, useState } from "react";
+import { vibrancyUnavailable } from "./platform";
 
 export type Settings = {
   /** 0 = solid, 1 = most see-through. */
@@ -41,7 +42,8 @@ export function surfaceAlphas(transparency: number, reduced = false) {
 }
 
 export const prefersReducedTransparency = () =>
-  typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-transparency: reduce)").matches;
+  vibrancyUnavailable() ||
+  (typeof window !== "undefined" && typeof window.matchMedia === "function" && window.matchMedia("(prefers-reduced-transparency: reduce)").matches);
 
 export async function applyAppearance(settings: Settings) {
   const reduced = prefersReducedTransparency();
@@ -51,7 +53,7 @@ export async function applyAppearance(settings: Settings) {
   root.style.setProperty("--glass-a", String(a.glass));
   root.style.setProperty("--glass-strong-a", String(a.glassStrong));
   root.classList.toggle("solid", a.solid);
-  if (!isTauri()) return;
+  if (!isTauri() || vibrancyUnavailable()) return;
   // A solid window needs no native material behind it; this also saves GPU work.
   try {
     const { getCurrentWindow, Effect, EffectState } = await import("@tauri-apps/api/window");
@@ -74,7 +76,7 @@ export function useSettings() {
   useEffect(() => {
     if (typeof window.matchMedia !== "function") return;
     const mq = window.matchMedia("(prefers-reduced-transparency: reduce)");
-    const on = () => setReduced(mq.matches);
+    const on = () => setReduced(prefersReducedTransparency());
     mq.addEventListener("change", on);
     return () => mq.removeEventListener("change", on);
   }, []);

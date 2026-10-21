@@ -44,8 +44,17 @@
     "active": true,
     "targets": [
       "app",
-      "dmg"
+      "dmg",
+      "nsis",
+      "msi",
+      "appimage",
+      "deb"
     ],
+    "publisher": "Tether",
+    "category": "DeveloperTool",
+    "shortDescription": "A local-first HTTP workbench",
+    "longDescription": "Tether is a local-first desktop HTTP client. Build and send API requests, chain responses into later requests with references, keep environments and secrets in the system credential store, and save workspaces as plain files you can commit to Git.",
+    "copyright": "© 2026 Defrim Hasani",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

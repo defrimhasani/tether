@@ -5,6 +5,7 @@ import { contentType, detectKind, formatMarkup, tokenizeMarkup, type BodyKind, t
 import { isBinaryResponse } from "./body";
 import { findArrays } from "./table";
 import { DecodeBadge } from "./DecodeBadge";
+import { modKey } from "./platform";
 import { TableView, type TableSettings } from "./TableView";
 import { formatBytes, type HttpResponse } from "./model";
 
@@ -30,7 +31,7 @@ function useViewSettings(key?: string) {
 function useFindShortcut(ref: React.RefObject<HTMLInputElement | null>) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.metaKey && e.key === "f") { e.preventDefault(); ref.current?.focus(); ref.current?.select(); }
+      if (modKey(e) && e.key === "f") { e.preventDefault(); ref.current?.focus(); ref.current?.select(); }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);

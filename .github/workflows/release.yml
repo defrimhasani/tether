@@ -1,0 +1,158 @@
+name: Release
+
+# Push a tag like v0.2.0 (matching the version in src-tauri/tauri.conf.json) to build installers
+# for macOS, Windows and Linux and publish them as a GitHub Release. "Run workflow" builds the
+# version currently in tauri.conf.json and tags it v<version> if that tag doesn't exist yet.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  # Creates the release once, so the three build jobs don't race to create it.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.meta.outputs.tag }}
+      version: ${{ steps.meta.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          version=$(jq -r .version src-tauri/tauri.conf.json)
+          if [[ "$GITHUB_REF_TYPE" == "tag" ]]; then
+            tag="$GITHUB_REF_NAME"
+            if [[ "$tag" != "v$version" ]]; then
+              echo "::error::Tag $tag does not match version $version in src-tauri/tauri.conf.json"
+              exit 1
+            fi
+          else
+            tag="v$version"
+          fi
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+      - name: Create release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.meta.outputs.tag }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "Release $TAG already exists; assets will be added to it."
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "Tether v$VERSION" --generate-notes
+          fi
+
+  build:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-latest
+            args: --target universal-apple-darwin
+            rust-targets: aarch64-apple-darwin,x86_64-apple-darwin
+          - platform: windows-latest
+            args: ""
+            rust-targets: ""
+          - platform: ubuntu-22.04
+            args: ""
+            rust-targets: ""
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf \
+            libdbus-1-dev pkg-config
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.rust-targets }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Unsigned for now: macOS users must right-click → Open the first time, and Windows
+          # SmartScreen warns. To sign and notarize the macOS build, add these repository secrets
+          # and uncomment the lines below (see https://v2.tauri.app/distribute/sign/macos/).
+          # APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}               # base64 .p12
+          # APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          # APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}     # "Developer ID Application: …"
+          # APPLE_ID: ${{ secrets.APPLE_ID }}
+          # APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}                     # app-specific password
+          # APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          tagName: ${{ needs.prepare.outputs.tag }}
+          releaseName: Tether v__VERSION__
+          releaseDraft: false
+          prerelease: false
+          args: ${{ matrix.args }}
+
+      # Same installers under fixed names, so the website can link to
+      # https://github.com/defrimhasani/tether/releases/latest/download/<name>.
+      - name: Upload installers with stable names
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.prepare.outputs.tag }}
+          VERSION: ${{ needs.prepare.outputs.version }}
+        run: |
+          set -euo pipefail
+          out="$RUNNER_TEMP/stable"
+          mkdir -p "$out"
+
+          # stable <pattern under target/…/release/bundle/> <stable file name> <label>
+          # Patterns include the version so stale bundles restored by the Rust cache never match.
+          # (find instead of globstar: macOS ships bash 3.2; /usr/bin/find avoids find.exe on Windows.)
+          stable() {
+            local found count
+            found=$(/usr/bin/find src-tauri/target -type f -path "*/release/bundle/$1")
+            count=$(printf '%s' "$found" | grep -c . || true)
+            if [[ "$count" -ne 1 ]]; then
+              echo "::error::Expected exactly one file matching $1, found $count: ${found:-none}"
+              exit 1
+            fi
+            cp "$found" "$out/$2"
+            gh release upload "$TAG" "$out/$2#$3" --clobber --repo "$GITHUB_REPOSITORY"
+            echo "Uploaded $found as $2"
+          }
+
+          case "$RUNNER_OS" in
+            macOS)
+              stable "dmg/*_${VERSION}_*.dmg" Tether-macOS-universal.dmg "macOS (Apple silicon + Intel)"
+              ;;
+            Windows)
+              stable "nsis/*_${VERSION}_*-setup.exe" Tether-Windows-x64-setup.exe "Windows x64 installer (.exe)"
+              stable "msi/*_${VERSION}_*.msi" Tether-Windows-x64.msi "Windows x64 installer (.msi)"
+              ;;
+            Linux)
+              stable "appimage/*_${VERSION}_*.AppImage" Tether-Linux-x86_64.AppImage "Linux x86_64 (AppImage)"
+              stable "deb/*_${VERSION}_*.deb" Tether-Linux-amd64.deb "Linux amd64 (.deb)"
+              ;;
+          esac
