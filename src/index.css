@@ -214,6 +214,11 @@ svg { flex: none; }
   height: 26px; padding: 0 8px 0 18px; margin: 0 6px;
   font-size: 11px; font-weight: 600; color: var(--ink-3); border-radius: 7px;
 }
+.tree header .chev { position: absolute; left: 1px; top: 2px; width: 22px; height: 22px; color: var(--ink-3); }
+.tree header .chev svg { transition: transform 160ms var(--ease); }
+.tree header .chev svg.open { transform: rotate(90deg); }
+.tree header .count { margin-left: 6px; font-weight: 500; font-variant-numeric: tabular-nums; color: var(--ink-4); }
+.tree header > span:first-of-type { cursor: default; }
 .tree header > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tree header .row-actions { display: flex; gap: 0; opacity: 0; transition: opacity 120ms; }
 .tree header:hover .row-actions, .tree header:focus-within .row-actions { opacity: 1; }

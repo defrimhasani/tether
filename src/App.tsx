@@ -13,7 +13,7 @@ import { Scenery } from "./Scenery";
 import { BodyEditor } from "./BodyEditor";
 import { maskHeader } from "./markup";
 import {
-  ArrowUp, Bot, Command, Ellipsis, FileDown, PencilRuler, Folder, FolderPlus, Layers, Plus, Search, Settings as SettingsIcon, SlidersHorizontal, Square, SquarePen, X,
+  ArrowUp, Bot, ChevronRight, Command, Ellipsis, FileDown, PencilRuler, Folder, FolderPlus, Layers, Plus, Search, Settings as SettingsIcon, SlidersHorizontal, Square, SquarePen, X,
 } from "lucide-react";
 import * as ops from "./workspace-ops";
 import { useWorkspace } from "./useWorkspace";
@@ -67,6 +67,11 @@ export default function App() {
   const [sidebarTab, setSidebarTab] = useState<"collections" | "history" | "design">("collections");
   const [designId, setDesignId] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
+  const [collapsed, setCollapsed] = useState<string[]>(() => {
+    try { return JSON.parse(localStorage.getItem("tether.collapsed") ?? "[]") as string[]; } catch { return []; }
+  });
+  useEffect(() => localStorage.setItem("tether.collapsed", JSON.stringify(collapsed)), [collapsed]);
+  const toggleCollapsed = (id: string) => setCollapsed((cs) => (cs.includes(id) ? cs.filter((x) => x !== id) : [...cs, id]));
   const [split, setSplit] = useState(() => Number(localStorage.getItem("tether.split")) || 0.5);
   const [selectedField, setSelectedField] = useState<Selection | null>(null);
   const cursors = useRef<Record<string, Cursor>>({});
@@ -513,6 +518,7 @@ export default function App() {
                   onDragLeave: () => setDropAt((k) => (k === key ? null : k)),
                   onDrop: (e: React.DragEvent) => { e.preventDefault(); onDrop(c.id, index); },
                 });
+                const expanded = !!q || !collapsed.includes(c.id);
                 return (
                   <section key={c.id}>
                     <header
@@ -522,6 +528,9 @@ export default function App() {
                       onDragEnd={() => { drag.current = null; setDropAt(null); }}
                       {...dragProps(`c:${c.id}`, c.requests.length)}
                     >
+                      <button className="icon chev" aria-label={`${expanded ? "Collapse" : "Expand"} ${c.name}`} aria-expanded={expanded} disabled={!!q} onClick={() => toggleCollapsed(c.id)}>
+                        <ChevronRight size={12} className={expanded ? "open" : ""} />
+                      </button>
                       {renamingCol === c.id ? (
                         <input
                           className="rename" autoFocus defaultValue={c.name} aria-label="Collection name"
@@ -530,7 +539,7 @@ export default function App() {
                           onKeyDown={(e) => { if (e.key === "Enter") e.currentTarget.blur(); if (e.key === "Escape") setRenamingCol(null); }}
                         />
                       ) : (
-                        <span onDoubleClick={() => setRenamingCol(c.id)}>{c.name}</span>
+                        <span onClick={() => !q && toggleCollapsed(c.id)} onDoubleClick={() => setRenamingCol(c.id)}>{c.name}{!expanded && <small className="count">{c.requests.length}</small>}</span>
                       )}
                       <span className="row-actions">
                         <button className="icon" title="New request in collection" aria-label={`New request in ${c.name}`} onClick={() => addRequest(c.id)}><Plus size={14} /></button>
@@ -545,8 +554,8 @@ export default function App() {
                         ]} />
                       )}
                     </header>
-                    {items.length === 0 && <p className="muted small pad" {...dragProps(`c:${c.id}`, 0)}>Empty collection.</p>}
-                    {items.map((r) => (
+                    {expanded && items.length === 0 && <p className="muted small pad" {...dragProps(`c:${c.id}`, 0)}>Empty collection.</p>}
+                    {expanded && items.map((r) => (
                       <div
                         key={r.id}
                         className={`req-row ${dropAt === r.id ? "drop" : ""}`}
@@ -801,8 +810,8 @@ function Menu({ items, onClose }: { items: { label: string; hint?: string; dange
   };
   return (
     <div className="menu" role="menu" ref={ref} onKeyDown={move}>
-      {items.map((it) => (
-        <button key={it.label} role="menuitem" className={it.danger ? "danger-text" : ""} onClick={() => { onClose(); it.run(); }}>
+      {items.map((it, i) => (
+        <button key={`${i}:${it.label}`} role="menuitem" className={it.danger ? "danger-text" : ""} onClick={() => { onClose(); it.run(); }}>
           {it.label}{it.hint && <kbd>{it.hint}</kbd>}
         </button>
       ))}

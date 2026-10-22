@@ -206,6 +206,19 @@ pub fn run_mcp_bridge() {
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
+/// `tauri dev` runs a bare binary, so macOS shows a generic Dock icon; set the real one.
+#[cfg(all(target_os = "macos", debug_assertions))]
+fn set_dock_icon() {
+  use objc2::{AllocAnyThread, MainThreadMarker};
+  use objc2_app_kit::{NSApplication, NSImage};
+  use objc2_foundation::NSData;
+  let Some(mtm) = MainThreadMarker::new() else { return };
+  let data = NSData::with_bytes(include_bytes!("../icons/icon.png"));
+  if let Some(img) = NSImage::initWithData(NSImage::alloc(), &data) {
+    unsafe { NSApplication::sharedApplication(mtm).setApplicationIconImage(Some(&img)) };
+  }
+}
+
 pub fn run() {
   tauri::Builder::default()
     .plugin(tauri_plugin_opener::init())
@@ -232,6 +245,8 @@ pub fn run() {
       mock::mock_status
     ])
     .setup(|app| {
+      #[cfg(all(target_os = "macos", debug_assertions))]
+      set_dock_icon();
       if cfg!(debug_assertions) {
         app.handle().plugin(
           tauri_plugin_log::Builder::default()
